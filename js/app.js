@@ -586,6 +586,9 @@
         $('#page-desk').classList.add('active');
         renderDesk();
         break;
+      case 'features':
+        $('#page-features').classList.add('active');
+        break;
       case 'about':
         $('#page-about').classList.add('active');
         break;
@@ -2085,6 +2088,97 @@
     });
   }
 
+  // ——— Guide & Special Features Page ———
+  function initGuidePage() {
+    // Category tabs filtering
+    $$('.feature-category-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('.feature-category-btn').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+
+        const cat = btn.dataset.featureCat;
+        $$('.feature-card').forEach(card => {
+          if (cat === 'all' || card.dataset.category === cat) {
+            card.hidden = false;
+          } else {
+            card.hidden = true;
+          }
+        });
+      });
+    });
+
+    // Try Rain button
+    $('#btnGuideTryRain')?.addEventListener('click', () => {
+      playAmbientSound('rain');
+      const popover = $('#ambientPopover');
+      if (popover) popover.hidden = false;
+    });
+
+    // Try Fire button
+    $('#btnGuideTryFire')?.addEventListener('click', () => {
+      playAmbientSound('fire');
+      const popover = $('#ambientPopover');
+      if (popover) popover.hidden = false;
+    });
+
+    // Open Write Canvas
+    $('#btnGuideOpenWrite')?.addEventListener('click', () => {
+      openModal();
+    });
+
+    // Open Write with Marginalia (take to step 3)
+    $('#btnGuideOpenMarginaliaWrite')?.addEventListener('click', () => {
+      openModal();
+      showStep(3);
+      $('#formMarginalia')?.focus();
+    });
+
+    // Try Zen Mode
+    $('#btnGuideTryZen')?.addEventListener('click', () => {
+      openModal();
+      showStep(2);
+      const zenOverlay = $('#zenOverlay');
+      const zenTextarea = $('#zenTextarea');
+      const formContent = $('#formContent');
+      if (zenOverlay && zenTextarea && formContent) {
+        zenTextarea.value = formContent.value || 'Write in peace...\n\nEvery line is preserved here in full-screen clarity.';
+        zenOverlay.hidden = false;
+        setTimeout(() => zenTextarea.focus(), 100);
+      }
+    });
+
+    // Open draft modal
+    $('#btnGuideOpenDraftModal')?.addEventListener('click', () => {
+      openModal();
+    });
+
+    // Guide links with custom navigation targets
+    document.addEventListener('click', (e) => {
+      const readingLink = e.target.closest('[data-guide-reading]');
+      if (readingLink) {
+        e.preventDefault();
+        navigateTo('reading', readingLink.dataset.guideReading);
+        return;
+      }
+
+      const filterLink = e.target.closest('[data-guide-filter]');
+      if (filterLink) {
+        e.preventDefault();
+        currentFilter = filterLink.dataset.guideFilter;
+        navigateTo('archive');
+        $$('.filter-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.filter === currentFilter);
+          b.setAttribute('aria-selected', b.dataset.filter === currentFilter ? 'true' : 'false');
+        });
+        renderArchive();
+      }
+    });
+  }
+
   // ——— Initialize Application ———
   function init() {
     initLockScreen();
@@ -2100,6 +2194,7 @@
     initPostcardModal();
     initZenMode();
     initDraftEngine();
+    initGuidePage();
     setFooterYear();
 
     const adminTools = $('#adminTools');

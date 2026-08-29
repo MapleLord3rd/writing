@@ -64,6 +64,7 @@
         <a href="#" data-nav="collections" class="nav-link">Collections</a>
         <a href="#" data-nav="timeline" class="nav-link">Timeline</a>
         <a href="#" data-nav="desk" class="nav-link">Writer's Desk</a>
+        <a href="#" data-nav="features" class="nav-link">Features & Guide</a>
         <a href="#" data-nav="about" class="nav-link">About</a>
         <div class="ambient-sound-control">
           <button class="theme-toggle ambient-toggle-btn" id="ambientToggleBtn" title="Ambient Soundscapes" aria-label="Toggle ambient soundscapes">
@@ -181,6 +182,25 @@
               <span class="card-dot" aria-hidden="true">·</span>
               <a href="#" class="quote-title-link" id="quoteTitleLink" data-quote-id="a-friend-like-you">From &ldquo;A Friend Like You&rdquo; →</a>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Special Features Teaser Banner -->
+    <div class="section guide-teaser-section">
+      <div class="container container--narrow">
+        <div class="guide-teaser-card reveal-up" data-nav="features" role="button" tabindex="0" aria-label="Explore Special Features and Guide">
+          <div class="guide-teaser-content">
+            <div class="guide-teaser-badge-row">
+              <span class="guide-teaser-pill">✦ Special Features</span>
+              <span class="guide-teaser-chip">Interactive Guide</span>
+            </div>
+            <h3 class="guide-teaser-title">Explore The Archive's Special Features & Guide</h3>
+            <p class="guide-teaser-desc">Discover ambient rain & fireplace soundscapes, aesthetic postcard exporters, floating reader customizers, secret author notes, and collaborative literary dialogues.</p>
+          </div>
+          <div class="guide-teaser-action">
+            <span class="guide-teaser-link">Explore Features & Instructions &rarr;</span>
           </div>
         </div>
       </div>
@@ -344,6 +364,341 @@
       </div>
       <div class="desk-breakdown" id="deskBreakdown">
         <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SPECIAL FEATURES & GUIDE PAGE ==================== -->
+  <section class="page page--features" id="page-features">
+    <div class="container">
+      <div class="archive-header reveal-up">
+        <span class="section-label">Companion & Guide</span>
+        <h2 class="page-title">Special Features & Instructions</h2>
+        <p class="page-desc">
+          A guide to the tools, ambient audio, aesthetic postcard exporters,
+          and collaborative workflows built into The Archive.
+        </p>
+      </div>
+
+      <!-- Features Category Tabs -->
+      <div class="features-categories reveal-up" role="tablist" aria-label="Filter features by category">
+        <button class="feature-category-btn active" data-feature-cat="all" role="tab" aria-selected="true">All Features</button>
+        <button class="feature-category-btn" data-feature-cat="audio" role="tab" aria-selected="false">🎧 Ambient Audio</button>
+        <button class="feature-category-btn" data-feature-cat="reading" role="tab" aria-selected="false">📖 Reading Tools</button>
+        <button class="feature-category-btn" data-feature-cat="export" role="tab" aria-selected="false">🎨 Postcards & Export</button>
+        <button class="feature-category-btn" data-feature-cat="writing" role="tab" aria-selected="false">✍️ Writing & Dialogues</button>
+        <button class="feature-category-btn" data-feature-cat="security" role="tab" aria-selected="false">🔒 Security & Desk</button>
+      </div>
+
+      <!-- Features Grid -->
+      <div class="features-grid reveal-up">
+
+        <!-- 1. Ambient Soundscapes -->
+        <article class="feature-card" data-category="audio">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🎧</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Audio & Ambience</span>
+              <h3 class="feature-title">Web Audio Ambient Soundscapes</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Immerse yourself in gentle synthesized rainfall or a crackling fireplace while reading and writing. Powered entirely in the browser using the Web Audio API without needing external sound files.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Look at the top-right of the navigation bar for the <strong>Headphone icon</strong> (next to Dark Mode).</li>
+              <li><span class="step-num">2</span> Click to open the soundscape menu.</li>
+              <li><span class="step-num">3</span> Select <strong class="guide-tag">🌧 Rain</strong> for soothing rainfall or <strong class="guide-tag">🔥 Fire</strong> for cozy fireplace embers.</li>
+              <li><span class="step-num">4</span> Use the volume slider to set your comfortable audio level. A glowing amber dot signals sound is playing.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <button type="button" class="feature-action-btn" id="btnGuideTryRain">🌧 Try Rain Soundscape</button>
+            <button type="button" class="feature-action-btn" id="btnGuideTryFire">🔥 Try Fire Soundscape</button>
+          </div>
+        </article>
+
+        <!-- 2. Floating Aa Reader Customizer -->
+        <article class="feature-card" data-category="reading">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">📖</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Reading Experience</span>
+              <h3 class="feature-title">Floating &ldquo;Aa&rdquo; Reader Customizer</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Personalize your reading atmosphere with typography controls, scaling, margin widths, and a dedicated stanza focus spotlight.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Open any poem or writing piece to enter reading mode.</li>
+              <li><span class="step-num">2</span> Click the floating <strong class="guide-tag">Aa</strong> button in the bottom right corner.</li>
+              <li><span class="step-num">3</span> <strong>Typefaces:</strong> Switch between <em>Serif</em> (Cormorant Garamond), <em>Sans</em> (Inter), or <em>Mono</em> (JetBrains Mono).</li>
+              <li><span class="step-num">4</span> <strong>Text Scaling & Width:</strong> Scale font size with <span class="kbd-badge">A-</span> and <span class="kbd-badge">A+</span>, and adjust column width to <em>Narrow</em>, <em>Medium</em>, or <em>Wide</em>.</li>
+              <li><span class="step-num">5</span> <strong>Stanza Focus Mode:</strong> Toggle the checkbox to dim all other lines and spotlight only the stanza you are currently hovering or reading.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="feature-action-btn link-action" data-nav="reading" data-guide-reading="a-friend-like-you">Open Reading Mode &rarr;</a>
+          </div>
+        </article>
+
+        <!-- 3. Aesthetic Postcard Generator -->
+        <article class="feature-card" data-category="export">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🎨</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Graphic Generator</span>
+              <h3 class="feature-title">Aesthetic Literary Postcard Exporter</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Generate 1080&times;1080 high-resolution literary graphic cards complete with decorative double borders, author insignias, wax seals, and curated typography.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Open any poem in reading mode and click <strong class="guide-tag">🖼️ Postcard</strong> in the bottom toolbar.</li>
+              <li><span class="step-num">2</span> Choose your theme: <em>Warm Parchment</em>, <em>Midnight Obsidian</em>, <em>Crimson Velvet</em>, or <em>Sage Herbal</em>.</li>
+              <li><span class="step-num">3</span> Select a specific stanza or teaser quote from the excerpt dropdown.</li>
+              <li><span class="step-num">4</span> Click <strong class="guide-tag">Download PNG</strong> to save to your device or <strong class="guide-tag">Copy Image</strong> to paste directly into chat messages.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="feature-action-btn link-action" data-nav="reading" data-guide-reading="a-friend-like-you">Try Postcard on Tribute Poem &rarr;</a>
+          </div>
+        </article>
+
+        <!-- 4. Connected Poems & Literary Dialogues -->
+        <article class="feature-card" data-category="writing">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">💬</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Collaboration</span>
+              <h3 class="feature-title">Connected Poems & Literary Dialogues</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Create bidirectional poetic conversations. Write in response to each other's pieces and build a web of literary dialogues across the archive.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Click the floating <strong class="guide-tag">+</strong> write button.</li>
+              <li><span class="step-num">2</span> Go through Step 1 (Details) and Step 2 (Write Canvas) to <strong>Step 3: Options</strong>.</li>
+              <li><span class="step-num">3</span> In the <strong>&ldquo;In Response To&rdquo;</strong> dropdown, pick an existing piece by Neerav or Friend.</li>
+              <li><span class="step-num">4</span> When published, your piece will display a top dialogue banner linking to the original, and the original will showcase your response in its gallery.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <button type="button" class="feature-action-btn" id="btnGuideOpenWrite">✍️ Open Writing Canvas</button>
+          </div>
+        </article>
+
+        <!-- 5. Marginalia & Behind-the-Lines Secret Notes -->
+        <article class="feature-card" data-category="writing">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">✒️</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Storytelling</span>
+              <h3 class="feature-title">Marginalia & Secret Author Notes</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Capture the hidden memories, late-night backstory, or dedication behind any piece without cluttering the main poem.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> When creating or editing a piece, navigate to <strong>Step 3: Options</strong>.</li>
+              <li><span class="step-num">2</span> Add your thoughts into the <strong>&ldquo;Behind the Lines / Marginalia&rdquo;</strong> field.</li>
+              <li><span class="step-num">3</span> When reading, an interactive <strong class="guide-tag">[ ✒ Behind the Lines / Marginalia ]</strong> button appears under the poem.</li>
+              <li><span class="step-num">4</span> Readers can click it to slide open the author's secret commentary drawer.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <button type="button" class="feature-action-btn" id="btnGuideOpenMarginaliaWrite">Write a Piece with Marginalia &rarr;</button>
+          </div>
+        </article>
+
+        <!-- 6. Bookmarks & Favorites Shelf -->
+        <article class="feature-card" data-category="reading">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">✦</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Organization</span>
+              <h3 class="feature-title">Bookmarks & Favorites Shelf</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Curate your personal collection of favorite writings across the archive with instant one-click bookmarking.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> On any card in the Archive or Home page, click the <strong class="guide-tag">✦</strong> star icon in the top right.</li>
+              <li><span class="step-num">2</span> While reading any piece, click the <strong class="guide-tag">✦ Favorite</strong> button in the bottom floating toolbar.</li>
+              <li><span class="step-num">3</span> Go to the <strong>Archive</strong> tab and click the <strong class="guide-tag">✦ Favorites</strong> filter button to view all your starred pieces.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="feature-action-btn link-action" data-nav="archive" data-guide-filter="favorites">View Favorites Shelf &rarr;</a>
+          </div>
+        </article>
+
+        <!-- 7. Distraction-Free Zen Fullscreen Mode -->
+        <article class="feature-card" data-category="writing">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🪶</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Writing Studio</span>
+              <h3 class="feature-title">Distraction-Free Zen Fullscreen Mode</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            A serene, full-screen writing sanctuary with zero interface distractions and real-time word and line counts.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Click <strong class="guide-tag">+ Write</strong> and complete Step 1 (Title, Author, Date).</li>
+              <li><span class="step-num">2</span> In <strong>Step 2 (Canvas)</strong>, click <strong class="guide-tag">🪶 Zen Mode</strong> in the top right.</li>
+              <li><span class="step-num">3</span> Enjoy a distraction-free writing screen with live word counts.</li>
+              <li><span class="step-num">4</span> Press <span class="kbd-badge">Esc</span> or click <strong class="guide-tag">Exit Zen</strong> to return to the modal and publish your work.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <button type="button" class="feature-action-btn" id="btnGuideTryZen">Try Zen Writing Canvas</button>
+          </div>
+        </article>
+
+        <!-- 8. LocalStorage Draft Auto-Saving & Recovery -->
+        <article class="feature-card" data-category="writing">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">💾</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Data Protection</span>
+              <h3 class="feature-title">Draft Auto-Saving & Instant Recovery</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Never worry about lost poems or accidental browser closures. Your writing is continuously auto-saved locally in real time.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Whenever you type in the writing canvas, your work is saved automatically.</li>
+              <li><span class="step-num">2</span> If you close your browser tab or restart your computer, simply click <strong class="guide-tag">+ Write</strong>.</li>
+              <li><span class="step-num">3</span> A gold banner will appear: <em>&ldquo;Unsaved draft found from [timestamp]&rdquo;</em>.</li>
+              <li><span class="step-num">4</span> Click <strong class="guide-tag">Restore Draft</strong> to bring back all your text, title, tags, and settings.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <button type="button" class="feature-action-btn" id="btnGuideOpenDraftModal">Open Writing Modal &rarr;</button>
+          </div>
+        </article>
+
+        <!-- 9. Author Signature Wax Seals -->
+        <article class="feature-card" data-category="reading">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🕯️</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Insignias & Identity</span>
+              <h3 class="feature-title">Author Signature Wax Seals</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Distinguished author emblems stamped at the conclusion of every poem and literary piece.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> <strong>Neerav:</strong> Stamped with the Crimson &amp; Gold Archivist seal (<span class="kbd-badge">N</span>) — <em>&ldquo;Written with care by Neerav · The Archivist&rdquo;</em>.</li>
+              <li><span class="step-num">2</span> <strong>Friend:</strong> Stamped with the Amethyst &amp; Star Muse seal (<span class="kbd-badge">✦</span>) — <em>&ldquo;Written with heart by Friend · The Muse&rdquo;</em>.</li>
+              <li><span class="step-num">3</span> Simply select the author name when publishing, and the seal is automatically generated.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="feature-action-btn link-action" data-nav="desk">View Author Profiles at Desk &rarr;</a>
+          </div>
+        </article>
+
+        <!-- 10. Shared Writer's Desk & Milestones -->
+        <article class="feature-card" data-category="security">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🖋️</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Analytics</span>
+              <h3 class="feature-title">Shared Writer's Desk & Milestones</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Comprehensive collaborative metrics celebrating your shared creative journey, total words penned, themes explored, and dialogues exchanged.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Click <strong class="guide-tag">Writer's Desk</strong> in the top navigation bar.</li>
+              <li><span class="step-num">2</span> View collaborative counters: total works, words written, dialogues, and shared themes.</li>
+              <li><span class="step-num">3</span> Compare works and genres between Neerav (The Archivist) and Friend (The Muse).</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="feature-action-btn link-action" data-nav="desk">Visit Writer's Desk &rarr;</a>
+          </div>
+        </article>
+
+        <!-- 11. Dual-Password Gatekeeper & Quick Lock -->
+        <article class="feature-card" data-category="security">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🔒</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Security & Privacy</span>
+              <h3 class="feature-title">Dual-Password Gatekeeper & Instant Lock</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Protect your private writings with a secure gatekeeper screen and two secret passphrase keys.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> <strong>Passphrases:</strong> Unlock the site using either <span class="kbd-badge">terrible judgement</span> or <span class="kbd-badge">friendship</span>.</li>
+              <li><span class="step-num">2</span> <strong>Quick Lock:</strong> Click the <strong>Padlock icon</strong> in the top navigation bar anytime to immediately lock the archive and clear your session.</li>
+              <li><span class="step-num">3</span> <strong>Backup &amp; Restore:</strong> Go to the <strong>About</strong> page to export or import your entire archive as a single <span class="kbd-badge">.json</span> file.</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <a href="#" class="feature-action-btn link-action" data-nav="about">View Backup &amp; Restore Tools &rarr;</a>
+          </div>
+        </article>
+
       </div>
     </div>
   </section>
