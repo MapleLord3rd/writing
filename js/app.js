@@ -1110,10 +1110,13 @@
     // Auto-update hint based on type
     formType.addEventListener('change', (e) => {
       const hint = $('#contentHint');
+      const subHint = $('#contentSubHint');
       if (e.target.value === 'poem') {
-        hint.textContent = 'Line breaks will be preserved for poems';
+        if (hint) hint.textContent = 'Poem Mode: Line breaks preserved exactly';
+        if (subHint) subHint.textContent = 'Tip: Press Enter for new lines, or Enter twice between stanzas.';
       } else {
-        hint.textContent = 'Use double line breaks for paragraph breaks';
+        if (hint) hint.textContent = 'Prose Mode: Paragraphs formatted automatically';
+        if (subHint) subHint.textContent = 'Tip: Write freely. Press Enter twice to start a new paragraph.';
       }
     });
   }

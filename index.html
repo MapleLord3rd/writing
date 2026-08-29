@@ -382,11 +382,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title" id="modalTitle">Add New Writing</h2>
-        <div class="modal-steps" id="modalSteps">
-          <span class="modal-step active" data-step="1">1. Details</span>
-          <span class="modal-step" data-step="2">2. Write</span>
-          <span class="modal-step" data-step="3">3. Options</span>
-        </div>
         <button class="modal-close" id="modalClose" aria-label="Close dialog">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -444,19 +439,27 @@
         <!-- Step 2: Writing Content -->
         <div class="form-step" data-step="2">
           <div class="form-group">
-            <label for="formContent" class="form-label">Your Writing *</label>
-            <textarea id="formContent" class="form-textarea form-textarea-large" rows="20" required placeholder="Write your poem or story here...
+            <div class="form-header-row">
+              <label for="formContent" class="form-label">Your Writing *</label>
+              <span class="form-hint-pill" id="contentHint">Writing Mode: Line breaks are preserved naturally</span>
+            </div>
+            <textarea
+              id="formContent"
+              class="form-textarea form-textarea-large"
+              rows="18"
+              required
+              placeholder="Begin writing here...
 
-For poems: line breaks are preserved exactly
-Leave blank lines between stanzas
-
-For prose: use double line breaks between paragraphs"></textarea>
-            <span class="form-hint" id="contentHint">Line breaks will be preserved for poems</span>
+Write freely just as you would in a journal.
+• Press Enter to start a new line
+• Press Enter twice to leave a gap between verses or paragraphs"
+            ></textarea>
+            <span class="form-hint" id="contentSubHint">Tip: Press Enter for new lines, or Enter twice for paragraph/verse gaps.</span>
           </div>
 
           <div class="form-actions">
-            <button type="button" class="btn-secondary" id="btnPrevStep2">← Back</button>
-            <button type="button" class="btn-primary" id="btnNextStep2">Next: Options →</button>
+            <button type="button" class="btn-secondary" id="btnPrevStep2">← Back: Edit Details</button>
+            <button type="button" class="btn-primary" id="btnNextStep2">Next: Publishing Options →</button>
           </div>
         </div>
 
