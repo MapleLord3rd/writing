@@ -12,6 +12,35 @@
 </head>
 <body>
 
+  <!-- Password Lock Screen -->
+  <div class="lock-screen" id="lockScreen">
+    <div class="lock-screen-content">
+      <div class="lock-icon" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h1 class="lock-title">The Archive</h1>
+      <p class="lock-subtitle">Enter password to unlock</p>
+      <form class="lock-form" id="lockForm">
+        <input
+          type="password"
+          id="lockPassword"
+          class="lock-input"
+          placeholder="Password"
+          autocomplete="off"
+          required
+        >
+        <button type="submit" class="lock-btn">Unlock</button>
+      </form>
+      <p class="lock-error" id="lockError" hidden>Incorrect password. Please try again.</p>
+    </div>
+  </div>
+
+  <!-- Main Content (hidden until unlocked) -->
+  <div class="main-content" id="mainContent" hidden>
+
   <!-- Grain overlay -->
   <div class="grain-overlay" aria-hidden="true"></div>
 
@@ -347,6 +376,11 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title" id="modalTitle">Add New Writing</h2>
+        <div class="modal-steps" id="modalSteps">
+          <span class="modal-step active" data-step="1">1. Details</span>
+          <span class="modal-step" data-step="2">2. Write</span>
+          <span class="modal-step" data-step="3">3. Options</span>
+        </div>
         <button class="modal-close" id="modalClose" aria-label="Close dialog">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -356,86 +390,105 @@
       <form class="modal-form" id="writingForm">
         <input type="hidden" id="editingId" value="">
 
-        <div class="form-group">
-          <label for="formTitle" class="form-label">Title *</label>
-          <input type="text" id="formTitle" class="form-input" required>
-        </div>
-
-        <div class="form-row">
+        <!-- Step 1: Basic Details -->
+        <div class="form-step active" data-step="1">
           <div class="form-group">
-            <label for="formAuthor" class="form-label">Author *</label>
-            <select id="formAuthor" class="form-input" required>
-              <option value="">Select author...</option>
-              <option value="neerav">Neerav</option>
-              <option value="friend">Friend</option>
-            </select>
+            <label for="formTitle" class="form-label">Title *</label>
+            <input type="text" id="formTitle" class="form-input" required>
           </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="formAuthor" class="form-label">Author *</label>
+              <select id="formAuthor" class="form-input" required>
+                <option value="">Select author...</option>
+                <option value="neerav">Neerav</option>
+                <option value="friend">Friend</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="formType" class="form-label">Type *</label>
+              <select id="formType" class="form-input" required>
+                <option value="poem">Poem</option>
+                <option value="story">Story</option>
+                <option value="article">Article</option>
+                <option value="essay">Essay</option>
+                <option value="note">Note</option>
+              </select>
+            </div>
+          </div>
+
           <div class="form-group">
-            <label for="formType" class="form-label">Type *</label>
-            <select id="formType" class="form-input" required>
-              <option value="poem">Poem</option>
-              <option value="story">Story</option>
-              <option value="article">Article</option>
-              <option value="essay">Essay</option>
-              <option value="note">Note</option>
-            </select>
+            <label for="formDate" class="form-label">Date *</label>
+            <input type="date" id="formDate" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="formExcerpt" class="form-label">Excerpt *</label>
+            <input type="text" id="formExcerpt" class="form-input" placeholder='"A short preview line shown on cards..."' required>
+            <span class="form-hint">This appears on cards in the archive</span>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
+            <button type="button" class="btn-primary" id="btnNextStep1">Next: Write →</button>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="formDate" class="form-label">Date *</label>
-          <input type="date" id="formDate" class="form-input" required>
-        </div>
-
-        <div class="form-group">
-          <label for="formExcerpt" class="form-label">Excerpt *</label>
-          <input type="text" id="formExcerpt" class="form-input" placeholder='"A short preview line shown on cards..."' required>
-          <span class="form-hint">This appears on cards in the archive</span>
-        </div>
-
-        <div class="form-group">
-          <label for="formContent" class="form-label">Content *</label>
-          <textarea id="formContent" class="form-textarea" rows="12" required placeholder="Your poem or writing here...
+        <!-- Step 2: Writing Content -->
+        <div class="form-step" data-step="2">
+          <div class="form-group">
+            <label for="formContent" class="form-label">Your Writing *</label>
+            <textarea id="formContent" class="form-textarea form-textarea-large" rows="20" required placeholder="Write your poem or story here...
 
 For poems: line breaks are preserved exactly
 Leave blank lines between stanzas
 
 For prose: use double line breaks between paragraphs"></textarea>
-          <span class="form-hint" id="contentHint">Line breaks will be preserved for poems</span>
-        </div>
-
-        <div class="form-group">
-          <label for="formTags" class="form-label">Tags</label>
-          <input type="text" id="formTags" class="form-input" placeholder="friendship, gratitude, life">
-          <span class="form-hint">Separate with commas</span>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="formReadingTime" class="form-label">Reading Time</label>
-            <input type="text" id="formReadingTime" class="form-input" value="2 min read">
+            <span class="form-hint" id="contentHint">Line breaks will be preserved for poems</span>
           </div>
-          <div class="form-group">
-            <label for="formCollection" class="form-label">Collection</label>
-            <select id="formCollection" class="form-input">
-              <option value="">None</option>
-              <option value="personal">Personal</option>
-              <option value="reflections">Reflections</option>
-              <option value="moments">Moments</option>
-            </select>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="btnPrevStep2">← Back</button>
+            <button type="button" class="btn-primary" id="btnNextStep2">Next: Options →</button>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-checkbox">
-            <input type="checkbox" id="formFeatured">
-            <span>Featured (show on home page)</span>
-          </label>
-        </div>
+        <!-- Step 3: Optional Details -->
+        <div class="form-step" data-step="3">
+          <div class="form-group">
+            <label for="formTags" class="form-label">Tags</label>
+            <input type="text" id="formTags" class="form-input" placeholder="friendship, gratitude, life">
+            <span class="form-hint">Separate with commas</span>
+          </div>
 
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
-          <button type="submit" class="btn-primary" id="btnSave">Save Writing</button>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="formReadingTime" class="form-label">Reading Time</label>
+              <input type="text" id="formReadingTime" class="form-input" value="2 min read">
+            </div>
+            <div class="form-group">
+              <label for="formCollection" class="form-label">Collection</label>
+              <select id="formCollection" class="form-input">
+                <option value="">None</option>
+                <option value="personal">Personal</option>
+                <option value="reflections">Reflections</option>
+                <option value="moments">Moments</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" id="formFeatured">
+              <span>Featured (show on home page)</span>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="btnPrevStep3">← Back</button>
+            <button type="submit" class="btn-primary" id="btnSave">Save Writing</button>
+          </div>
         </div>
       </form>
     </div>
@@ -462,6 +515,8 @@ For prose: use double line breaks between paragraphs"></textarea>
       </svg>
     </button>
   </div>
+</div>
+<!-- End Main Content -->
 
   <script src="data/writings.js"></script>
   <script src="js/app.js"></script>

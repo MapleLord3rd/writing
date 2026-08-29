@@ -884,8 +884,22 @@
   const formCollection = $('#formCollection');
   const formFeatured = $('#formFeatured');
 
+  let currentStep = 1;
+
+  function showStep(step) {
+    currentStep = step;
+    $$('.form-step').forEach(el => {
+      el.classList.toggle('active', parseInt(el.dataset.step) === step);
+    });
+    $$('.modal-step').forEach(el => {
+      el.classList.toggle('active', parseInt(el.dataset.step) === step);
+    });
+  }
+
   function openModal(writing = null) {
     const lastAuthor = localStorage.getItem('last-author') || 'neerav';
+    showStep(1); // Always start at Step 1
+
     if (writing) {
       modalTitle.textContent = 'Edit Writing';
       editingIdInput.value = writing.id;
@@ -913,12 +927,62 @@
 
   function closeModal() {
     adminModal.hidden = true;
+    showStep(1);
   }
 
   function initAdmin() {
     // Add button
     $('#btnAddWriting').addEventListener('click', () => {
       openModal();
+    });
+
+    // Step Navigation Buttons
+    $('#btnNextStep1').addEventListener('click', () => {
+      // Validate Step 1 fields
+      if (!formTitle.value.trim()) {
+        formTitle.reportValidity();
+        return;
+      }
+      if (!formAuthor.value) {
+        formAuthor.reportValidity();
+        return;
+      }
+      if (!formDate.value) {
+        formDate.reportValidity();
+        return;
+      }
+      if (!formExcerpt.value.trim()) {
+        formExcerpt.reportValidity();
+        return;
+      }
+      showStep(2);
+      // Focus the writing area
+      setTimeout(() => formContent.focus(), 100);
+    });
+
+    $('#btnPrevStep2').addEventListener('click', () => {
+      showStep(1);
+    });
+
+    $('#btnNextStep2').addEventListener('click', () => {
+      // Validate content
+      if (!formContent.value.trim()) {
+        formContent.reportValidity();
+        return;
+      }
+      showStep(3);
+    });
+
+    $('#btnPrevStep3').addEventListener('click', () => {
+      showStep(2);
+    });
+
+    // Click step pills in header to jump
+    $$('.modal-step').forEach(stepEl => {
+      stepEl.addEventListener('click', () => {
+        const targetStep = parseInt(stepEl.dataset.step);
+        showStep(targetStep);
+      });
     });
 
     // Close button & overlay
@@ -1070,8 +1134,62 @@
     });
   }
 
+  // ——— Password Lock Screen ———
+  function initLockScreen() {
+    const lockScreen = $('#lockScreen');
+    const mainContent = $('#mainContent');
+    const lockForm = $('#lockForm');
+    const lockPassword = $('#lockPassword');
+    const lockError = $('#lockError');
+    const lockScreenContent = lockScreen.querySelector('.lock-screen-content');
+
+    // Accepted passwords
+    const CORRECT_PASSWORDS = ['terrible judgement', 'friendship'];
+
+    // Check if already unlocked in this session
+    if (sessionStorage.getItem('archive-unlocked') === 'true') {
+      lockScreen.hidden = true;
+      mainContent.hidden = false;
+      return;
+    }
+
+    // Show lock screen
+    lockScreen.hidden = false;
+    mainContent.hidden = true;
+
+    lockForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const enteredPassword = lockPassword.value;
+
+      if (CORRECT_PASSWORDS.includes(enteredPassword)) {
+        // Correct password
+        sessionStorage.setItem('archive-unlocked', 'true');
+        lockError.hidden = true;
+
+        // Smooth transition
+        lockScreen.style.opacity = '0';
+        setTimeout(() => {
+          lockScreen.hidden = true;
+          mainContent.hidden = false;
+          lockScreen.style.opacity = '1';
+        }, 500);
+      } else {
+        // Wrong password - shake animation
+        lockError.hidden = false;
+        lockScreenContent.classList.add('shake');
+        lockPassword.value = '';
+        lockPassword.focus();
+
+        setTimeout(() => {
+          lockScreenContent.classList.remove('shake');
+        }, 400);
+      }
+    });
+  }
+
   // ——— Initialize ———
   function init() {
+    initLockScreen();
     initTheme();
     initNav();
     initArchiveControls();
