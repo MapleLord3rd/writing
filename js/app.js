@@ -1187,9 +1187,23 @@
     });
   }
 
+  // ——— Lock Archive Button ———
+  function initLockButton() {
+    const lockBtn = $('#lockArchiveBtn');
+    if (!lockBtn) return;
+
+    lockBtn.addEventListener('click', () => {
+      if (confirm('Lock the archive? You will need to re-enter the password.')) {
+        sessionStorage.removeItem('archive-unlocked');
+        location.reload();
+      }
+    });
+  }
+
   // ——— Initialize ———
   function init() {
     initLockScreen();
+    initLockButton();
     initTheme();
     initNav();
     initArchiveControls();
