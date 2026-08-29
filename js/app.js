@@ -1,5 +1,6 @@
 /* ============================================================
    THE ARCHIVE — Application Logic
+   A collaborative literary journal & digital archive
    ============================================================ */
 
 (function () {
@@ -13,11 +14,15 @@
   let currentSearch = '';
   let activeTagFilters = [];
   let lastScrollY = 0;
-  let currentReadingId = null; // Track currently reading writing
+  let currentReadingId = null;
+
+  // ——— Storage Keys ———
+  const STORAGE_KEY = 'archive-writings';
+  const FAVORITES_KEY = 'archive-favorites';
+  const DRAFT_KEY = 'archive-draft';
+  const READER_PREFS_KEY = 'archive-reader-prefs';
 
   // ——— Data Management (localStorage) ———
-  const STORAGE_KEY = 'archive-writings';
-
   function getWritings() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -27,7 +32,6 @@
         console.error('Failed to parse stored writings:', e);
       }
     }
-    // Fallback to initial data from writings.js
     return typeof WRITINGS !== 'undefined' ? WRITINGS : [];
   }
 
@@ -67,7 +71,7 @@
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `writings-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `archive-backup-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -89,6 +93,32 @@
       }
     };
     reader.readAsText(file);
+  }
+
+  // ——— Bookmarks & Favorites Shelf ———
+  function getFavorites() {
+    try {
+      const favs = localStorage.getItem(FAVORITES_KEY);
+      return favs ? JSON.parse(favs) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function isFavorite(id) {
+    return getFavorites().includes(id);
+  }
+
+  function toggleFavorite(id) {
+    let favs = getFavorites();
+    const isFav = favs.includes(id);
+    if (isFav) {
+      favs = favs.filter(f => f !== id);
+    } else {
+      favs.push(id);
+    }
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+    return !isFav;
   }
 
   // ——— DOM Cache ———
@@ -121,6 +151,7 @@
 
   // ——— Helpers ———
   function formatDate(dateStr) {
+    if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-GB', {
       day: 'numeric', month: 'short', year: 'numeric'
@@ -128,6 +159,7 @@
   }
 
   function formatDateLong(dateStr) {
+    if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-GB', {
       day: 'numeric', month: 'long', year: 'numeric'
@@ -139,17 +171,264 @@
   }
 
   function countWords(text) {
+    if (!text) return 0;
     return text.trim().split(/\s+/).filter(Boolean).length;
   }
 
   function escapeHTML(str) {
+    if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
 
+  // ——— Web Audio API Ambient Soundscapes ———
+  let audioCtx = null;
+  let ambientGainNode = null;
+  let currentAmbientType = 'off';
+  let ambientSourceNodes = [];
+  let ambientInterval = null;
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function stopAmbientSound() {
+    ambientSourceNodes.forEach(node => {
+      try { node.stop(); } catch (e) {}
+      try { node.disconnect(); } catch (e) {}
+    });
+    ambientSourceNodes = [];
+    if (ambientInterval) {
+      clearInterval(ambientInterval);
+      ambientInterval = null;
+    }
+    currentAmbientType = 'off';
+    const dot = $('#ambientStatusDot');
+    const toggleBtn = $('#ambientToggleBtn');
+    if (toggleBtn) toggleBtn.classList.remove('playing');
+    if (dot) dot.style.opacity = '0';
+    $$('.ambient-opt').forEach(opt => opt.classList.toggle('active', opt.dataset.sound === 'off'));
+  }
+
+  function createNoiseBuffer(ctx, duration = 4, type = 'pink') {
+    const bufferSize = ctx.sampleRate * duration;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      if (type === 'pink') {
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+        b6 = white * 0.115926;
+      } else {
+        // Brown noise
+        b0 = (b0 + (0.02 * white)) / 1.02;
+        data[i] = b0 * 3.5;
+      }
+    }
+    return buffer;
+  }
+
+  function playAmbientSound(type) {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    stopAmbientSound();
+
+    if (type === 'off') return;
+
+    if (!ambientGainNode) {
+      ambientGainNode = ctx.createGain();
+      const volInput = $('#ambientVolume');
+      ambientGainNode.gain.setValueAtTime(volInput ? parseFloat(volInput.value) : 0.4, ctx.currentTime);
+      ambientGainNode.connect(ctx.destination);
+    }
+
+    if (type === 'rain') {
+      // Gentle rainfall soundscape
+      const rainBuffer = createNoiseBuffer(ctx, 5, 'pink');
+      const rainSource = ctx.createBufferSource();
+      rainSource.buffer = rainBuffer;
+      rainSource.loop = true;
+
+      const rainFilter = ctx.createBiquadFilter();
+      rainFilter.type = 'lowpass';
+      rainFilter.frequency.setValueAtTime(460, ctx.currentTime);
+      rainFilter.Q.setValueAtTime(1.4, ctx.currentTime);
+
+      rainSource.connect(rainFilter);
+      rainFilter.connect(ambientGainNode);
+      rainSource.start();
+      ambientSourceNodes.push(rainSource);
+
+    } else if (type === 'fire') {
+      // Cozy fireplace soundscape
+      const rumbleBuffer = createNoiseBuffer(ctx, 4, 'brown');
+      const rumbleSource = ctx.createBufferSource();
+      rumbleSource.buffer = rumbleBuffer;
+      rumbleSource.loop = true;
+
+      const rumbleFilter = ctx.createBiquadFilter();
+      rumbleFilter.type = 'lowpass';
+      rumbleFilter.frequency.setValueAtTime(220, ctx.currentTime);
+
+      rumbleSource.connect(rumbleFilter);
+      rumbleFilter.connect(ambientGainNode);
+      rumbleSource.start();
+      ambientSourceNodes.push(rumbleSource);
+
+      // Random snapping crackle impulses
+      ambientInterval = setInterval(() => {
+        if (Math.random() > 0.45 && audioCtx && audioCtx.state === 'running') {
+          const crackleBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.04), ctx.sampleRate);
+          const crackleData = crackleBuffer.getChannelData(0);
+          for (let j = 0; j < crackleData.length; j++) {
+            crackleData[j] = (Math.random() * 2 - 1) * Math.exp(-j / (crackleData.length * 0.25));
+          }
+          const crackleSource = ctx.createBufferSource();
+          crackleSource.buffer = crackleBuffer;
+
+          const crackleFilter = ctx.createBiquadFilter();
+          crackleFilter.type = 'bandpass';
+          crackleFilter.frequency.setValueAtTime(1200 + Math.random() * 2400, ctx.currentTime);
+          crackleFilter.Q.setValueAtTime(2.5, ctx.currentTime);
+
+          const crackleGain = ctx.createGain();
+          crackleGain.gain.setValueAtTime(0.3 + Math.random() * 0.4, ctx.currentTime);
+
+          crackleSource.connect(crackleFilter);
+          crackleFilter.connect(crackleGain);
+          crackleGain.connect(ambientGainNode);
+          crackleSource.start();
+        }
+      }, 160);
+    }
+
+    currentAmbientType = type;
+    const toggleBtn = $('#ambientToggleBtn');
+    const dot = $('#ambientStatusDot');
+    if (toggleBtn) toggleBtn.classList.add('playing');
+    if (dot) dot.style.opacity = '1';
+    $$('.ambient-opt').forEach(opt => opt.classList.toggle('active', opt.dataset.sound === type));
+  }
+
+  function initAmbientSound() {
+    const toggleBtn = $('#ambientToggleBtn');
+    const popover = $('#ambientPopover');
+    const volumeSlider = $('#ambientVolume');
+    const volumeLabel = $('#ambientVolLabel');
+
+    if (!toggleBtn || !popover) return;
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      popover.hidden = !popover.hidden;
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!popover.contains(e.target) && e.target !== toggleBtn) {
+        popover.hidden = true;
+      }
+    });
+
+    $$('.ambient-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sound = btn.dataset.sound;
+        playAmbientSound(sound);
+      });
+    });
+
+    if (volumeSlider) {
+      volumeSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (ambientGainNode && audioCtx) {
+          ambientGainNode.gain.setValueAtTime(val, audioCtx.currentTime);
+        }
+        if (volumeLabel) {
+          volumeLabel.textContent = Math.round(val * 100) + '%';
+        }
+      });
+    }
+  }
+
+  // ——— Excerpt / Quote of the Day ———
+  function initQuoteOfDay() {
+    const quoteText = $('#quoteText');
+    const quoteAuthor = $('#quoteAuthor');
+    const quoteTitleLink = $('#quoteTitleLink');
+    const btnShuffle = $('#btnShuffleQuote');
+    const quoteCard = $('#quoteCard');
+
+    if (!quoteText) return;
+
+    function renderRandomQuote() {
+      const writings = getWritings();
+      if (!writings.length) return;
+
+      const randomWriting = writings[Math.floor(Math.random() * writings.length)];
+      let quote = randomWriting.excerpt || '';
+      if (!quote && randomWriting.content) {
+        const lines = randomWriting.content.split('\n').filter(l => l.trim().length > 0);
+        quote = lines.slice(0, 3).join(' ');
+      }
+      // Clean quote marks if double wrapped
+      quote = quote.replace(/^["']|["']$/g, '');
+
+      if (quoteCard) {
+        quoteCard.style.opacity = '0';
+        quoteCard.style.transform = 'translateY(8px)';
+      }
+
+      setTimeout(() => {
+        quoteText.innerHTML = `&ldquo;${escapeHTML(quote)}&rdquo;`;
+        quoteAuthor.textContent = `By ${randomWriting.author === 'friend' ? 'Friend' : 'Neerav'}`;
+        quoteTitleLink.textContent = `From \u201C${randomWriting.title}\u201D \u2192`;
+        quoteTitleLink.dataset.quoteId = randomWriting.id;
+
+        if (quoteCard) {
+          quoteCard.style.opacity = '1';
+          quoteCard.style.transform = 'translateY(0)';
+        }
+      }, 200);
+    }
+
+    renderRandomQuote();
+
+    if (btnShuffle) {
+      btnShuffle.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderRandomQuote();
+      });
+    }
+
+    if (quoteTitleLink) {
+      quoteTitleLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = quoteTitleLink.dataset.quoteId;
+        if (id) navigateTo('reading', id);
+      });
+    }
+  }
+
   // ——— Particles ———
   function initParticles() {
+    if (!particlesCanvas) return;
     const ctx = particlesCanvas.getContext('2d');
     let particles = [];
     const count = Math.min(40, Math.floor(window.innerWidth / 30));
@@ -213,7 +492,6 @@
 
   // ——— Navigation ———
   function initNav() {
-    // Scroll behavior — show/hide nav
     window.addEventListener('scroll', () => {
       const y = window.scrollY;
       nav.classList.toggle('scrolled', y > 50);
@@ -224,34 +502,28 @@
       }
       lastScrollY = y;
 
-      // Reading progress
       if (currentPage === 'reading') {
         const article = readingContent;
-        const rect = article.getBoundingClientRect();
         const total = article.scrollHeight - window.innerHeight;
         const progress = Math.min(100, Math.max(0,
-          ((window.scrollY - article.offsetTop) / total) * 100
+          ((window.scrollY - article.offsetTop) / (total || 1)) * 100
         ));
         readingProgressBar.style.width = progress + '%';
       }
     }, { passive: true });
 
-    // Mobile toggle
     navToggle.addEventListener('click', () => {
       navToggle.classList.toggle('open');
       navLinks.classList.toggle('open');
-      navToggle.setAttribute('aria-expanded',
-        navToggle.classList.contains('open'));
+      navToggle.setAttribute('aria-expanded', navToggle.classList.contains('open'));
     });
 
-    // Nav links
     document.addEventListener('click', (e) => {
       const link = e.target.closest('[data-nav]');
       if (!link) return;
       e.preventDefault();
       const page = link.dataset.nav;
       navigateTo(page);
-      // Close mobile menu
       navToggle.classList.remove('open');
       navLinks.classList.remove('open');
       navToggle.setAttribute('aria-expanded', 'false');
@@ -259,21 +531,22 @@
   }
 
   function navigateTo(page, data) {
-    // Remove active from all pages
     $$('.page').forEach(p => p.classList.remove('active'));
 
-    // Update nav
     $$('.nav-link').forEach(l => {
       l.classList.toggle('active', l.dataset.nav === page);
     });
 
-    // Show/hide reading progress
     readingProgress.classList.toggle('visible', page === 'reading');
 
-    // Show/hide admin tools
     const adminTools = $('#adminTools');
     if (adminTools) {
       adminTools.hidden = page !== 'reading';
+    }
+
+    const readerPanel = $('#readerPanel');
+    if (readerPanel) {
+      readerPanel.hidden = page !== 'reading';
     }
 
     currentPage = page;
@@ -281,42 +554,43 @@
 
     switch (page) {
       case 'home':
-        $(`#page-home`).classList.add('active');
+        $('#page-home').classList.add('active');
+        renderFeatured();
+        initQuoteOfDay();
         break;
       case 'archive':
-        $(`#page-archive`).classList.add('active');
+        $('#page-archive').classList.add('active');
         renderArchive();
         break;
       case 'reading':
-        $(`#page-reading`).classList.add('active');
+        $('#page-reading').classList.add('active');
         renderReading(data);
         break;
       case 'collections':
-        $(`#page-collections`).classList.add('active');
+        $('#page-collections').classList.add('active');
         renderCollections();
         break;
       case 'collection-detail':
-        $(`#page-collection-detail`).classList.add('active');
+        $('#page-collection-detail').classList.add('active');
         renderCollectionDetail(data);
         break;
       case 'tag':
-        $(`#page-tag`).classList.add('active');
+        $('#page-tag').classList.add('active');
         renderTagPage(data);
         break;
       case 'timeline':
-        $(`#page-timeline`).classList.add('active');
+        $('#page-timeline').classList.add('active');
         renderTimeline();
         break;
       case 'desk':
-        $(`#page-desk`).classList.add('active');
+        $('#page-desk').classList.add('active');
         renderDesk();
         break;
       case 'about':
-        $(`#page-about`).classList.add('active');
+        $('#page-about').classList.add('active');
         break;
     }
 
-    // Trigger reveal animations after a tick
     requestAnimationFrame(() => {
       requestAnimationFrame(() => observeReveals());
     });
@@ -325,22 +599,38 @@
   // ——— Writing Cards ———
   function createWritingCard(writing, delay = 0) {
     const card = document.createElement('article');
-    card.className = 'writing-card visible'; // Add 'visible' immediately
+    card.className = 'writing-card visible';
     card.style.transitionDelay = delay + 'ms';
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-label', `Read: ${writing.title}`);
+    card.style.position = 'relative';
 
-    const tagsHtml = writing.tags.map(t =>
+    const tagsHtml = (writing.tags || []).map(t =>
       `<span class="card-tag" data-tag="${escapeHTML(t)}" title="Filter by #${escapeHTML(t)}">#${escapeHTML(t)}</span>`
     ).join(' ');
 
     const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
     const authorBadge = `<span class="card-author">By ${authorName}</span>`;
 
+    const dialogueBadge = writing.inResponseTo
+      ? `<span class="card-type" style="background: var(--gold-faint); color: var(--gold); border-color: var(--gold);">💬 Dialogue</span>`
+      : '';
+
+    const isFav = isFavorite(writing.id);
+    const bookmarkBtnHtml = `
+      <button class="card-bookmark-btn ${isFav ? 'favorited' : ''}" data-favorite-id="${writing.id}" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}" aria-label="Favorite">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </button>
+    `;
+
     card.innerHTML = `
+      ${bookmarkBtnHtml}
       <div class="card-meta">
         <span class="card-type">${escapeHTML(writing.type)}</span>
+        ${dialogueBadge}
         <span class="card-dot" aria-hidden="true">·</span>
         <span class="card-date">${formatDate(writing.date)}</span>
         <span class="card-dot" aria-hidden="true">·</span>
@@ -350,12 +640,26 @@
       <p class="card-excerpt">${escapeHTML(writing.excerpt)}</p>
       <div class="card-footer">
         <div class="card-tags">${tagsHtml}</div>
-        <span class="card-reading-time">${escapeHTML(writing.readingTime)}</span>
+        <span class="card-reading-time">${escapeHTML(writing.readingTime || '2 min read')}</span>
       </div>
     `;
 
-    // Click to open
     card.addEventListener('click', (e) => {
+      // Favorite click
+      const favBtn = e.target.closest('.card-bookmark-btn');
+      if (favBtn) {
+        e.stopPropagation();
+        const id = favBtn.dataset.favoriteId;
+        const nowFav = toggleFavorite(id);
+        favBtn.classList.toggle('favorited', nowFav);
+        favBtn.querySelector('svg').setAttribute('fill', nowFav ? 'currentColor' : 'none');
+        if (currentFilter === 'favorites') {
+          renderArchive();
+        }
+        return;
+      }
+
+      // Tag click
       if (e.target.closest('.card-tag')) {
         const tag = e.target.dataset.tag;
         navigateTo('tag', tag);
@@ -363,6 +667,7 @@
       }
       navigateTo('reading', writing.id);
     });
+
     card.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -378,7 +683,7 @@
     const featured = getWritings()
       .filter(w => w.featured)
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 5);
+      .slice(0, 6);
 
     featuredGrid.innerHTML = '';
     featured.forEach((w, i) => {
@@ -395,8 +700,11 @@
       results = results.filter(w => (w.author || 'neerav') === currentAuthorFilter);
     }
 
-    // Type filter
-    if (currentFilter !== 'all') {
+    // Type filter / Favorites filter
+    if (currentFilter === 'favorites') {
+      const favs = getFavorites();
+      results = results.filter(w => favs.includes(w.id));
+    } else if (currentFilter !== 'all') {
       results = results.filter(w => w.type === currentFilter);
     }
 
@@ -404,17 +712,17 @@
     if (currentSearch) {
       const q = currentSearch.toLowerCase();
       results = results.filter(w =>
-        w.title.toLowerCase().includes(q) ||
-        w.excerpt.toLowerCase().includes(q) ||
-        w.content.toLowerCase().includes(q) ||
-        w.tags.some(t => t.includes(q))
+        (w.title && w.title.toLowerCase().includes(q)) ||
+        (w.excerpt && w.excerpt.toLowerCase().includes(q)) ||
+        (w.content && w.content.toLowerCase().includes(q)) ||
+        (w.tags && w.tags.some(t => t.toLowerCase().includes(q)))
       );
     }
 
     // Tag filters
     if (activeTagFilters.length > 0) {
       results = results.filter(w =>
-        activeTagFilters.every(tag => w.tags.includes(tag))
+        activeTagFilters.every(tag => (w.tags || []).includes(tag))
       );
     }
 
@@ -443,14 +751,11 @@
     } else {
       archiveEmpty.hidden = true;
       filtered.forEach((w, i) => {
-        archiveGrid.appendChild(createWritingCard(w, i * 60));
+        archiveGrid.appendChild(createWritingCard(w, i * 50));
       });
     }
 
-    // Stats at bottom
     archiveStats.innerHTML = `Showing ${filtered.length} of ${getWritings().length} works`;
-
-    // Active tag pills
     renderActiveTagPills();
   }
 
@@ -469,7 +774,6 @@
   }
 
   function initArchiveControls() {
-    // Author filter buttons
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.author-filter-btn');
       if (!btn) return;
@@ -483,7 +787,6 @@
       renderArchive();
     });
 
-    // Type filter buttons
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.filter-btn');
       if (!btn) return;
@@ -497,19 +800,16 @@
       renderArchive();
     });
 
-    // Search
     searchInput.addEventListener('input', (e) => {
       currentSearch = e.target.value.trim();
       renderArchive();
     });
 
-    // Sort
     sortSelect.addEventListener('change', (e) => {
       currentSort = e.target.value;
       renderArchive();
     });
 
-    // Clear filters
     $('#clearFilters').addEventListener('click', () => {
       currentFilter = 'all';
       currentAuthorFilter = 'all';
@@ -541,9 +841,17 @@
       return;
     }
 
-    // Show admin tools on reading page
     const adminTools = $('#adminTools');
     if (adminTools) adminTools.hidden = false;
+
+    // Update favorite button state
+    const btnBookmark = $('#btnBookmarkReading');
+    if (btnBookmark) {
+      const isFav = isFavorite(writing.id);
+      btnBookmark.classList.toggle('favorited', isFav);
+      const textSpan = btnBookmark.querySelector('.admin-btn-text');
+      if (textSpan) textSpan.textContent = isFav ? 'Favorited' : 'Favorite';
+    }
 
     const isPoem = writing.type === 'poem';
     const sortedWritings = [...getWritings()].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -554,25 +862,102 @@
     // Format content
     let bodyHtml;
     if (isPoem) {
-      const stanzas = writing.content.trim().split(/\n\n+/);
+      const stanzas = (writing.content || '').trim().split(/\n\n+/);
       bodyHtml = stanzas.map(s =>
         `<div class="poem-stanza">${escapeHTML(s)}</div>`
       ).join('');
     } else {
-      const paragraphs = writing.content.trim().split(/\n\n+/);
+      const paragraphs = (writing.content || '').trim().split(/\n\n+/);
       bodyHtml = paragraphs.map(p =>
         `<p>${escapeHTML(p)}</p>`
       ).join('');
     }
 
+    // Connected Poems / Literary Dialogues
+    let dialogueBannerHtml = '';
+    if (writing.inResponseTo) {
+      const parent = getWritings().find(w => w.id === writing.inResponseTo);
+      if (parent) {
+        dialogueBannerHtml = `
+          <div class="literary-dialogue-banner reveal-up">
+            <div class="dialogue-meta">
+              <span class="dialogue-badge">Literary Dialogue</span>
+              <span class="dialogue-text">Written in response to <strong>&ldquo;${escapeHTML(parent.title)}&rdquo;</strong> by ${parent.author === 'friend' ? 'Friend' : 'Neerav'}</span>
+            </div>
+            <a href="#" class="dialogue-link" data-dialogue-target="${parent.id}">Read original piece &rarr;</a>
+          </div>
+        `;
+      }
+    }
+
+    // Check for responses to this piece
+    const responses = getWritings().filter(w => w.inResponseTo === writing.id);
+    let responsesHtml = '';
+    if (responses.length > 0) {
+      responsesHtml = `
+        <div class="dialogue-responses-section">
+          <h3 class="dialogue-responses-title">✦ Responses to this piece (${responses.length})</h3>
+          <div class="dialogue-responses-grid">
+            ${responses.map(r => `
+              <div class="dialogue-response-card" data-dialogue-target="${r.id}" role="button" tabindex="0">
+                <span class="dialogue-response-author">By ${r.author === 'friend' ? 'Friend' : 'Neerav'}</span>
+                <h4 class="dialogue-response-title">&ldquo;${escapeHTML(r.title)}&rdquo;</h4>
+                <span class="dialogue-link" style="margin-top: 6px; display: inline-flex;">Read response &rarr;</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Marginalia / Behind the Lines Note
+    let marginaliaHtml = '';
+    if (writing.marginalia && writing.marginalia.trim()) {
+      marginaliaHtml = `
+        <div class="marginalia-container">
+          <button type="button" class="marginalia-toggle-btn" id="btnToggleMarginalia">
+            <span>✒</span>
+            <span>Behind the Lines / Marginalia</span>
+          </button>
+          <div class="marginalia-drawer" id="marginaliaDrawer" hidden>
+            <div class="marginalia-drawer-title">
+              <span>✦</span> Author's Backstory & Reflections
+            </div>
+            <div class="marginalia-drawer-content">${escapeHTML(writing.marginalia)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Author Signature Wax Seal
+    const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
+    const sealClass = (writing.author === 'friend') ? 'wax-seal--friend' : 'wax-seal--neerav';
+    const sealEmblem = (writing.author === 'friend') ? '✦' : 'N';
+    const sealSignature = (writing.author === 'friend')
+      ? 'Written with heart by Friend'
+      : 'Written with care by Neerav';
+    const sealSubtitle = (writing.author === 'friend')
+      ? 'The Muse · The Archive'
+      : 'The Archivist · The Archive';
+
+    const authorSealHtml = `
+      <div class="author-seal-wrapper">
+        <div class="wax-seal ${sealClass}">
+          <span class="wax-emblem">${sealEmblem}</span>
+        </div>
+        <span class="author-seal-signature">${sealSignature}</span>
+        <span class="author-seal-subtitle">${sealSubtitle}</span>
+      </div>
+    `;
+
     // Tags
-    const tagsHtml = writing.tags.map(t =>
+    const tagsHtml = (writing.tags || []).map(t =>
       `<span class="reading-tag" data-tag="${escapeHTML(t)}">#${escapeHTML(t)}</span>`
     ).join('');
 
-    // Related works (same tags, different writing)
+    // Related works
     const related = getWritings()
-      .filter(w => w.id !== writing.id && w.tags.some(t => writing.tags.includes(t)))
+      .filter(w => w.id !== writing.id && (w.tags || []).some(t => (writing.tags || []).includes(t)))
       .sort(() => Math.random() - 0.5)
       .slice(0, 3);
 
@@ -602,8 +987,6 @@
     }
     navHtml += '</div>';
 
-    const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
-
     readingContent.innerHTML = `
       <div class="reading-header reveal-up">
         <span class="reading-type">${escapeHTML(writing.type)}</span>
@@ -612,21 +995,29 @@
         <p class="reading-excerpt">${escapeHTML(writing.excerpt)}</p>
       </div>
 
+      ${dialogueBannerHtml}
+
       <div class="reading-divider" aria-hidden="true">
         <span>✦</span>
       </div>
 
-      <div class="reading-body ${isPoem ? 'reading-body--poem' : ''} reveal-up">
+      <div class="reading-body ${isPoem ? 'reading-body--poem' : ''} reveal-up" id="readingBodyContainer">
         ${bodyHtml}
       </div>
+
+      ${marginaliaHtml}
+      ${authorSealHtml}
+      ${responsesHtml}
 
       <div class="reading-footer">
         <div class="reading-tags">${tagsHtml}</div>
         ${navHtml}
-        <div class="reading-related">
-          <h2 class="reading-related-title">More from the Archive</h2>
-          <div class="reading-related-grid">${relatedHtml}</div>
-        </div>
+        ${related.length > 0 ? `
+          <div class="reading-related">
+            <h2 class="reading-related-title">More from the Archive</h2>
+            <div class="reading-related-grid">${relatedHtml}</div>
+          </div>
+        ` : ''}
         <div class="reading-back">
           <a href="#" class="link-subtle" data-nav="archive">
             ← Back to the Archive
@@ -635,13 +1026,38 @@
       </div>
     `;
 
-    // Event listeners for reading page elements
+    // Apply active reader preferences
+    applyReaderPrefs();
+
+    // Marginalia toggle handler
+    const btnMarginalia = $('#btnToggleMarginalia');
+    const drawerMarginalia = $('#marginaliaDrawer');
+    if (btnMarginalia && drawerMarginalia) {
+      btnMarginalia.addEventListener('click', () => {
+        drawerMarginalia.hidden = !drawerMarginalia.hidden;
+      });
+    }
+
+    // Dialogue link handlers
+    readingContent.querySelectorAll('[data-dialogue-target]').forEach(link => {
+      const handler = (e) => {
+        e.preventDefault();
+        navigateTo('reading', link.dataset.dialogueTarget);
+      };
+      link.addEventListener('click', handler);
+      link.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(e); }
+      });
+    });
+
+    // Tag clicks
     readingContent.querySelectorAll('.reading-tag').forEach(tag => {
       tag.addEventListener('click', () => {
         navigateTo('tag', tag.dataset.tag);
       });
     });
 
+    // Prev/Next clicks
     readingContent.querySelectorAll('.reading-nav-item').forEach(item => {
       const handler = () => navigateTo('reading', item.dataset.writingId);
       item.addEventListener('click', handler);
@@ -650,7 +1066,7 @@
       });
     });
 
-    // Re-attach card clicks in related section
+    // Related cards clicks
     readingContent.querySelectorAll('.writing-card').forEach(card => {
       const title = card.querySelector('.card-title')?.textContent;
       const w = getWritings().find(w => w.title === title);
@@ -665,8 +1081,448 @@
       }
     });
 
-    // Reset reading progress
     readingProgressBar.style.width = '0%';
+  }
+
+  // ——— Reader Customizer (Aa Panel) ———
+  function getReaderPrefs() {
+    try {
+      const saved = localStorage.getItem(READER_PREFS_KEY);
+      return saved ? JSON.parse(saved) : { font: 'serif', size: 100, width: 'medium', stanzaFocus: false };
+    } catch (e) {
+      return { font: 'serif', size: 100, width: 'medium', stanzaFocus: false };
+    }
+  }
+
+  function saveReaderPrefs(prefs) {
+    localStorage.setItem(READER_PREFS_KEY, JSON.stringify(prefs));
+  }
+
+  function applyReaderPrefs() {
+    const prefs = getReaderPrefs();
+    const readingArticle = $('#readingContent');
+    const readingBody = $('#readingBodyContainer');
+    if (!readingArticle || !readingBody) return;
+
+    // Font family
+    readingBody.classList.remove('reading-body--sans', 'reading-body--mono');
+    if (prefs.font === 'sans') readingBody.classList.add('reading-body--sans');
+    if (prefs.font === 'mono') readingBody.classList.add('reading-body--mono');
+
+    // Font size
+    readingBody.style.fontSize = `${prefs.size}%`;
+
+    // Width
+    readingArticle.classList.remove('reading--width-narrow', 'reading--width-medium', 'reading--width-wide');
+    readingArticle.classList.add(`reading--width-${prefs.width || 'medium'}`);
+
+    // Stanza focus mode
+    readingArticle.classList.toggle('stanza-focus-mode', Boolean(prefs.stanzaFocus));
+
+    // Update buttons in popover
+    $$('#readerFontGroup .reader-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.font === prefs.font);
+    });
+    $$('#readerWidthGroup .reader-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.width === prefs.width);
+    });
+    const sizeResetBtn = $('#btnFontReset');
+    if (sizeResetBtn) sizeResetBtn.textContent = `${prefs.size}%`;
+    const focusCheck = $('#stanzaFocusCheck');
+    if (focusCheck) focusCheck.checked = Boolean(prefs.stanzaFocus);
+  }
+
+  function initReaderCustomizer() {
+    const toggleBtn = $('#btnReaderToggle');
+    const popover = $('#readerPopover');
+
+    if (!toggleBtn || !popover) return;
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      popover.hidden = !popover.hidden;
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!popover.contains(e.target) && e.target !== toggleBtn) {
+        popover.hidden = true;
+      }
+    });
+
+    // Font switcher
+    $$('#readerFontGroup .reader-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const prefs = getReaderPrefs();
+        prefs.font = btn.dataset.font;
+        saveReaderPrefs(prefs);
+        applyReaderPrefs();
+      });
+    });
+
+    // Size controls
+    $('#btnFontSmaller')?.addEventListener('click', () => {
+      const prefs = getReaderPrefs();
+      prefs.size = Math.max(75, (prefs.size || 100) - 10);
+      saveReaderPrefs(prefs);
+      applyReaderPrefs();
+    });
+
+    $('#btnFontReset')?.addEventListener('click', () => {
+      const prefs = getReaderPrefs();
+      prefs.size = 100;
+      saveReaderPrefs(prefs);
+      applyReaderPrefs();
+    });
+
+    $('#btnFontLarger')?.addEventListener('click', () => {
+      const prefs = getReaderPrefs();
+      prefs.size = Math.min(150, (prefs.size || 100) + 10);
+      saveReaderPrefs(prefs);
+      applyReaderPrefs();
+    });
+
+    // Column width
+    $$('#readerWidthGroup .reader-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const prefs = getReaderPrefs();
+        prefs.width = btn.dataset.width;
+        saveReaderPrefs(prefs);
+        applyReaderPrefs();
+      });
+    });
+
+    // Stanza focus checkbox
+    $('#stanzaFocusCheck')?.addEventListener('change', (e) => {
+      const prefs = getReaderPrefs();
+      prefs.stanzaFocus = e.target.checked;
+      saveReaderPrefs(prefs);
+      applyReaderPrefs();
+    });
+  }
+
+  // ——— Aesthetic Postcard Generator (Canvas) ———
+  let currentPostcardTheme = 'parchment';
+
+  const POSTCARD_PALETTES = {
+    parchment: {
+      bg: '#F5F0E6',
+      cardBg: '#EDE8DF',
+      text: '#242321',
+      textSecondary: '#5C5750',
+      accent: '#7A2E33',
+      gold: '#A8824B',
+      border: 'rgba(36, 35, 33, 0.18)'
+    },
+    midnight: {
+      bg: '#141312',
+      cardBg: '#211F1C',
+      text: '#F0EAE1',
+      textSecondary: '#B3ACA0',
+      accent: '#D48588',
+      gold: '#D6B475',
+      border: 'rgba(240, 234, 225, 0.16)'
+    },
+    crimson: {
+      bg: '#250E10',
+      cardBg: '#341517',
+      text: '#FBEBEB',
+      textSecondary: '#D8B2B4',
+      accent: '#D6B475',
+      gold: '#F4DEB3',
+      border: 'rgba(214, 180, 117, 0.25)'
+    },
+    sage: {
+      bg: '#1B241E',
+      cardBg: '#253129',
+      text: '#EEF3EF',
+      textSecondary: '#A9BEAF',
+      accent: '#E2DCD0',
+      gold: '#C5D8CB',
+      border: 'rgba(200, 225, 210, 0.2)'
+    }
+  };
+
+  function renderPostcard(writing, themeKey, excerptText) {
+    const canvas = $('#postcardCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const p = POSTCARD_PALETTES[themeKey] || POSTCARD_PALETTES.parchment;
+
+    const width = 1080;
+    const height = 1080;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background
+    ctx.fillStyle = p.bg;
+    ctx.fillRect(0, 0, width, height);
+
+    // Inner card background
+    ctx.fillStyle = p.cardBg;
+    ctx.fillRect(60, 60, width - 120, height - 120);
+
+    // Double Border
+    ctx.strokeStyle = p.border;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(60, 60, width - 120, height - 120);
+    ctx.strokeRect(76, 76, width - 152, height - 152);
+
+    // Corner Ornaments
+    ctx.fillStyle = p.gold;
+    ctx.font = '24px "Cormorant Garamond", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✦', 76, 76);
+    ctx.fillText('✦', width - 76, 76);
+    ctx.fillText('✦', 76, height - 76);
+    ctx.fillText('✦', width - 76, height - 76);
+
+    // Top Header Badge
+    ctx.font = '500 18px "JetBrains Mono", Consolas, monospace';
+    ctx.fillStyle = p.accent;
+    ctx.letterSpacing = '3px';
+    ctx.fillText(`THE ARCHIVE · ${(writing.type || 'LITERARY WORK').toUpperCase()}`, width / 2, 140);
+
+    // Title
+    ctx.font = '600 48px "Cormorant Garamond", Georgia, serif';
+    ctx.fillStyle = p.text;
+    ctx.fillText(writing.title, width / 2, 210);
+
+    // Divider
+    ctx.strokeStyle = p.border;
+    ctx.beginPath();
+    ctx.moveTo(width / 2 - 120, 250);
+    ctx.lineTo(width / 2 + 120, 250);
+    ctx.stroke();
+
+    // Central Excerpt / Stanza Text
+    ctx.font = 'italic 34px "Cormorant Garamond", Georgia, serif';
+    ctx.fillStyle = p.text;
+    const maxWidth = 760;
+    const lineHeight = 50;
+
+    const words = (excerptText || writing.excerpt || '').replace(/^["']|["']$/g, '').split(' ');
+    let line = '';
+    const lines = [];
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        lines.push(line.trim());
+        line = words[n] + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line.trim());
+
+    // Center vertical lines
+    const startY = 480 - ((lines.length * lineHeight) / 2);
+    for (let k = 0; k < lines.length; k++) {
+      ctx.fillText(lines[k], width / 2, startY + (k * lineHeight));
+    }
+
+    // Author Seal & Signature
+    const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
+    const authorTitle = (writing.author === 'friend') ? 'The Muse' : 'The Archivist';
+
+    // Wax Seal circle
+    ctx.beginPath();
+    ctx.arc(width / 2, height - 250, 36, 0, Math.PI * 2);
+    ctx.fillStyle = (writing.author === 'friend') ? '#5A46A0' : '#7A2E33';
+    ctx.fill();
+    ctx.strokeStyle = p.gold;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFF';
+    ctx.font = '700 28px "Cormorant Garamond", serif';
+    ctx.fillText((writing.author === 'friend') ? '✦' : 'N', width / 2, height - 250);
+
+    // Signature line
+    ctx.font = '500 24px "Cormorant Garamond", Georgia, serif';
+    ctx.fillStyle = p.text;
+    ctx.fillText(`Penned by ${authorName} · ${authorTitle}`, width / 2, height - 180);
+
+    // Date & Footer watermark
+    ctx.font = '16px "JetBrains Mono", Consolas, monospace';
+    ctx.fillStyle = p.textSecondary;
+    ctx.fillText(`${formatDateLong(writing.date)} · The Archive`, width / 2, height - 120);
+  }
+
+  function initPostcardModal() {
+    const postcardModal = $('#postcardModal');
+    const postcardClose = $('#postcardClose');
+    const postcardOverlay = $('#postcardOverlay');
+    const excerptSelect = $('#postcardExcerptSelect');
+    const btnDownload = $('#btnDownloadPostcard');
+    const btnCopy = $('#btnCopyPostcard');
+
+    if (!postcardModal) return;
+
+    function openPostcard() {
+      if (!currentReadingId) return;
+      const writing = getWritings().find(w => w.id === currentReadingId);
+      if (!writing) return;
+
+      // Populate excerpts/stanzas in dropdown
+      excerptSelect.innerHTML = '';
+      const optDefault = document.createElement('option');
+      optDefault.value = writing.excerpt;
+      optDefault.textContent = `Card Excerpt: "${writing.excerpt.slice(0, 50)}..."`;
+      excerptSelect.appendChild(optDefault);
+
+      const stanzas = (writing.content || '').split(/\n\n+/).filter(s => s.trim());
+      stanzas.forEach((s, idx) => {
+        const opt = document.createElement('option');
+        opt.value = s.replace(/\n/g, ' ');
+        opt.textContent = `Stanza ${idx + 1}: "${s.slice(0, 45).replace(/\n/g, ' ')}..."`;
+        excerptSelect.appendChild(opt);
+      });
+
+      renderPostcard(writing, currentPostcardTheme, excerptSelect.value);
+      postcardModal.hidden = false;
+    }
+
+    function closePostcard() {
+      postcardModal.hidden = true;
+    }
+
+    $('#btnPostcard')?.addEventListener('click', openPostcard);
+    postcardClose?.addEventListener('click', closePostcard);
+    postcardOverlay?.addEventListener('click', closePostcard);
+
+    $$('.postcard-theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('.postcard-theme-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentPostcardTheme = btn.dataset.theme;
+        const writing = getWritings().find(w => w.id === currentReadingId);
+        if (writing) renderPostcard(writing, currentPostcardTheme, excerptSelect.value);
+      });
+    });
+
+    excerptSelect?.addEventListener('change', () => {
+      const writing = getWritings().find(w => w.id === currentReadingId);
+      if (writing) renderPostcard(writing, currentPostcardTheme, excerptSelect.value);
+    });
+
+    btnDownload?.addEventListener('click', () => {
+      const canvas = $('#postcardCanvas');
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = `the-archive-postcard-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    btnCopy?.addEventListener('click', () => {
+      const canvas = $('#postcardCanvas');
+      if (!canvas || !navigator.clipboard) return;
+      canvas.toBlob((blob) => {
+        if (blob) {
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+            .then(() => alert('✨ Postcard copied to clipboard!'))
+            .catch(() => alert('Could not copy image automatically. Use Download button instead.'));
+        }
+      });
+    });
+  }
+
+  // ——— Distraction-Free Zen Mode ———
+  function initZenMode() {
+    const zenOverlay = $('#zenOverlay');
+    const zenTextarea = $('#zenTextarea');
+    const formContent = $('#formContent');
+    const btnZenToggle = $('#btnZenToggle');
+    const btnExitZen = $('#btnExitZen');
+    const zenStats = $('#zenStats');
+    const formWordCounter = $('#formWordCounter');
+
+    if (!zenOverlay || !zenTextarea || !formContent) return;
+
+    function updateCounters(text) {
+      const words = countWords(text);
+      const lines = text.split('\n').length;
+      const statsStr = `${words} words · ${lines} lines`;
+      if (zenStats) zenStats.textContent = statsStr;
+      if (formWordCounter) formWordCounter.textContent = `${words} words`;
+    }
+
+    formContent.addEventListener('input', () => {
+      updateCounters(formContent.value);
+    });
+
+    btnZenToggle?.addEventListener('click', () => {
+      zenTextarea.value = formContent.value;
+      updateCounters(zenTextarea.value);
+      zenOverlay.hidden = false;
+      setTimeout(() => zenTextarea.focus(), 100);
+    });
+
+    function exitZen() {
+      formContent.value = zenTextarea.value;
+      updateCounters(formContent.value);
+      zenOverlay.hidden = true;
+      formContent.focus();
+    }
+
+    btnExitZen?.addEventListener('click', exitZen);
+
+    zenTextarea.addEventListener('input', () => {
+      formContent.value = zenTextarea.value;
+      updateCounters(zenTextarea.value);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !zenOverlay.hidden) {
+        exitZen();
+      }
+    });
+  }
+
+  // ——— Draft Auto-Saving Engine ———
+  function initDraftEngine() {
+    const formTitle = $('#formTitle');
+    const formAuthor = $('#formAuthor');
+    const formType = $('#formType');
+    const formDate = $('#formDate');
+    const formExcerpt = $('#formExcerpt');
+    const formContent = $('#formContent');
+    const formTags = $('#formTags');
+    const formMarginalia = $('#formMarginalia');
+    const formInResponseTo = $('#formInResponseTo');
+    const formReadingTime = $('#formReadingTime');
+    const formCollection = $('#formCollection');
+    const formFeatured = $('#formFeatured');
+
+    function saveCurrentDraft() {
+      if (editingIdInput && editingIdInput.value) return; // Don't overwrite draft when editing existing
+      if (!formTitle.value && !formContent.value) return;
+
+      const draft = {
+        title: formTitle.value,
+        author: formAuthor.value,
+        type: formType.value,
+        date: formDate.value,
+        excerpt: formExcerpt.value,
+        content: formContent.value,
+        tags: formTags.value,
+        marginalia: formMarginalia ? formMarginalia.value : '',
+        inResponseTo: formInResponseTo ? formInResponseTo.value : '',
+        readingTime: formReadingTime.value,
+        collection: formCollection.value,
+        featured: formFeatured.checked,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    }
+
+    [formTitle, formAuthor, formType, formDate, formExcerpt, formContent, formTags, formMarginalia, formInResponseTo, formReadingTime, formCollection].forEach(el => {
+      if (el) el.addEventListener('input', saveCurrentDraft);
+    });
+    if (formFeatured) formFeatured.addEventListener('change', saveCurrentDraft);
   }
 
   // ——— Collections ———
@@ -717,7 +1573,7 @@
   // ——— Tag Page ———
   function renderTagPage(tag) {
     const writings = getWritings()
-      .filter(w => w.tags.includes(tag))
+      .filter(w => (w.tags || []).includes(tag))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     tagHeader.innerHTML = `
@@ -736,7 +1592,6 @@
   function renderTimeline() {
     const sorted = [...getWritings()].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Group by year
     const byYear = {};
     sorted.forEach(w => {
       const year = new Date(w.date + 'T00:00:00').getFullYear();
@@ -765,7 +1620,7 @@
         entry.innerHTML = `
           <span class="timeline-entry-date">${formatDate(w.date)}</span>
           <h4 class="timeline-entry-title">${escapeHTML(w.title)}</h4>
-          <span class="timeline-entry-type">${escapeHTML(w.type)}</span>
+          <span class="timeline-entry-type">${escapeHTML(w.type)} · By ${w.author === 'friend' ? 'Friend' : 'Neerav'}</span>
         `;
         const handler = () => navigateTo('reading', w.id);
         entry.addEventListener('click', handler);
@@ -779,26 +1634,21 @@
     });
   }
 
-  // ——— Writer's Desk ———
+  // ——— Writer's Desk (Collaborative Milestones) ———
   function renderDesk() {
     const writings = getWritings();
     const totalWorks = writings.length;
     const totalWords = writings.reduce((sum, w) => sum + countWords(w.content), 0);
-    const poems = writings.filter(w => w.type === 'poem').length;
-    const stories = writings.filter(w => w.type === 'story').length;
-    const articles = writings.filter(w => w.type === 'article').length;
-    const essays = writings.filter(w => w.type === 'essay').length;
-    const notes = writings.filter(w => w.type === 'note').length;
+    const dialoguesCount = writings.filter(w => w.inResponseTo).length;
 
-    // Unique tags
     const allTags = new Set();
-    writings.forEach(w => w.tags.forEach(t => allTags.add(t)));
+    writings.forEach(w => (w.tags || []).forEach(t => allTags.add(t)));
 
     const stats = [
-      { number: totalWorks, label: 'works archived' },
+      { number: totalWorks, label: 'works preserved' },
       { number: totalWords.toLocaleString(), label: 'words written' },
-      { number: allTags.size, label: 'unique tags' },
-      { number: COLLECTIONS.length, label: 'collections' }
+      { number: dialoguesCount, label: 'literary dialogues' },
+      { number: allTags.size, label: 'shared themes' }
     ];
 
     deskStats.innerHTML = '';
@@ -813,18 +1663,20 @@
       deskStats.appendChild(div);
     });
 
-    const neeravWorks = writings.filter(w => (w.author || 'neerav') === 'neerav').length;
-    const friendWorks = writings.filter(w => w.author === 'friend').length;
+    const neeravWritings = writings.filter(w => (w.author || 'neerav') === 'neerav');
+    const friendWritings = writings.filter(w => w.author === 'friend');
+    const neeravWords = neeravWritings.reduce((sum, w) => sum + countWords(w.content), 0);
+    const friendWords = friendWritings.reduce((sum, w) => sum + countWords(w.content), 0);
 
     const breakdown = [
-      { count: neeravWorks, label: 'By Neerav' },
-      { count: friendWorks, label: 'By Friend' },
-      { count: poems, label: 'Poems' },
-      { count: stories, label: 'Stories' },
-      { count: articles, label: 'Articles' },
-      { count: essays, label: 'Essays' },
-      { count: notes, label: 'Notes' }
-    ].filter(b => b.count > 0);
+      { count: `${neeravWritings.length} (${neeravWords.toLocaleString()} w)`, label: 'Neerav (The Archivist)' },
+      { count: `${friendWritings.length} (${friendWords.toLocaleString()} w)`, label: 'Friend (The Muse)' },
+      { count: writings.filter(w => w.type === 'poem').length, label: 'Poems' },
+      { count: writings.filter(w => w.type === 'story').length, label: 'Stories' },
+      { count: writings.filter(w => w.type === 'article').length, label: 'Articles' },
+      { count: writings.filter(w => w.type === 'essay').length, label: 'Essays' },
+      { count: writings.filter(w => w.type === 'note').length, label: 'Notes' }
+    ].filter(b => parseInt(b.count) > 0 || String(b.count).startsWith('0') === false);
 
     deskBreakdown.innerHTML = '';
     breakdown.forEach(b => {
@@ -855,7 +1707,7 @@
       rootMargin: '0px 0px -40px 0px'
     });
 
-    $$('.reveal-up, .reveal-text, .writing-card, .collection-card, .timeline-entry, .desk-stat').forEach(el => {
+    $$('.reveal-up, .reveal-text, .writing-card, .collection-card, .timeline-entry, .desk-stat, .quote-card').forEach(el => {
       if (!el.classList.contains('visible')) {
         observer.observe(el);
       }
@@ -880,9 +1732,13 @@
   const formExcerpt = $('#formExcerpt');
   const formContent = $('#formContent');
   const formTags = $('#formTags');
+  const formMarginalia = $('#formMarginalia');
+  const formInResponseTo = $('#formInResponseTo');
   const formReadingTime = $('#formReadingTime');
   const formCollection = $('#formCollection');
   const formFeatured = $('#formFeatured');
+  const draftBanner = $('#draftBanner');
+  const draftTime = $('#draftTime');
 
   let currentStep = 1;
 
@@ -891,28 +1747,42 @@
     $$('.form-step').forEach(el => {
       el.classList.toggle('active', parseInt(el.dataset.step) === step);
     });
-    $$('.modal-step').forEach(el => {
-      el.classList.toggle('active', parseInt(el.dataset.step) === step);
-    });
+  }
+
+  function populateInResponseToOptions(excludeId = null) {
+    if (!formInResponseTo) return;
+    formInResponseTo.innerHTML = '<option value="">None (Standalone Piece)</option>';
+    getWritings()
+      .filter(w => w.id !== excludeId)
+      .forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.id;
+        opt.textContent = `"${w.title}" — by ${w.author === 'friend' ? 'Friend' : 'Neerav'}`;
+        formInResponseTo.appendChild(opt);
+      });
   }
 
   function openModal(writing = null) {
     const lastAuthor = localStorage.getItem('last-author') || 'neerav';
-    showStep(1); // Always start at Step 1
+    showStep(1);
+    populateInResponseToOptions(writing ? writing.id : null);
 
     if (writing) {
       modalTitle.textContent = 'Edit Writing';
       editingIdInput.value = writing.id;
-      formTitle.value = writing.title;
+      formTitle.value = writing.title || '';
       formAuthor.value = writing.author || 'neerav';
-      formType.value = writing.type;
-      formDate.value = writing.date;
-      formExcerpt.value = writing.excerpt;
-      formContent.value = writing.content;
-      formTags.value = writing.tags.join(', ');
+      formType.value = writing.type || 'poem';
+      formDate.value = writing.date || new Date().toISOString().split('T')[0];
+      formExcerpt.value = writing.excerpt || '';
+      formContent.value = writing.content || '';
+      formTags.value = (writing.tags || []).join(', ');
+      if (formMarginalia) formMarginalia.value = writing.marginalia || '';
+      if (formInResponseTo) formInResponseTo.value = writing.inResponseTo || '';
       formReadingTime.value = writing.readingTime || '2 min read';
       formCollection.value = writing.collection || '';
       formFeatured.checked = writing.featured || false;
+      if (draftBanner) draftBanner.hidden = true;
     } else {
       modalTitle.textContent = 'Add New Writing';
       writingForm.reset();
@@ -921,6 +1791,27 @@
       formDate.value = new Date().toISOString().split('T')[0];
       formReadingTime.value = '2 min read';
       formFeatured.checked = false;
+
+      // Check draft
+      const savedDraftStr = localStorage.getItem(DRAFT_KEY);
+      if (savedDraftStr && draftBanner) {
+        try {
+          const draft = JSON.parse(savedDraftStr);
+          if (draft.title || draft.content) {
+            draftBanner.hidden = false;
+            if (draftTime && draft.timestamp) {
+              const d = new Date(draft.timestamp);
+              draftTime.textContent = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            }
+          } else {
+            draftBanner.hidden = true;
+          }
+        } catch (e) {
+          draftBanner.hidden = true;
+        }
+      } else if (draftBanner) {
+        draftBanner.hidden = true;
+      }
     }
     adminModal.hidden = false;
   }
@@ -931,73 +1822,63 @@
   }
 
   function initAdmin() {
-    // Add button
-    $('#btnAddWriting').addEventListener('click', () => {
-      openModal();
+    $('#btnAddWriting')?.addEventListener('click', () => openModal());
+
+    $('#btnRestoreDraft')?.addEventListener('click', () => {
+      try {
+        const draft = JSON.parse(localStorage.getItem(DRAFT_KEY));
+        if (draft) {
+          formTitle.value = draft.title || '';
+          formAuthor.value = draft.author || 'neerav';
+          formType.value = draft.type || 'poem';
+          formDate.value = draft.date || new Date().toISOString().split('T')[0];
+          formExcerpt.value = draft.excerpt || '';
+          formContent.value = draft.content || '';
+          formTags.value = draft.tags || '';
+          if (formMarginalia) formMarginalia.value = draft.marginalia || '';
+          if (formInResponseTo) formInResponseTo.value = draft.inResponseTo || '';
+          formReadingTime.value = draft.readingTime || '2 min read';
+          formCollection.value = draft.collection || '';
+          formFeatured.checked = Boolean(draft.featured);
+          if (draftBanner) draftBanner.hidden = true;
+        }
+      } catch (e) {}
     });
 
-    // Step Navigation Buttons
-    $('#btnNextStep1').addEventListener('click', () => {
-      // Validate Step 1 fields
-      if (!formTitle.value.trim()) {
-        formTitle.reportValidity();
-        return;
-      }
-      if (!formAuthor.value) {
-        formAuthor.reportValidity();
-        return;
-      }
-      if (!formDate.value) {
-        formDate.reportValidity();
-        return;
-      }
-      if (!formExcerpt.value.trim()) {
-        formExcerpt.reportValidity();
-        return;
-      }
+    $('#btnDiscardDraft')?.addEventListener('click', () => {
+      localStorage.removeItem(DRAFT_KEY);
+      if (draftBanner) draftBanner.hidden = true;
+    });
+
+    $('#btnNextStep1')?.addEventListener('click', () => {
+      if (!formTitle.value.trim()) { formTitle.reportValidity(); return; }
+      if (!formAuthor.value) { formAuthor.reportValidity(); return; }
+      if (!formDate.value) { formDate.reportValidity(); return; }
+      if (!formExcerpt.value.trim()) { formExcerpt.reportValidity(); return; }
       showStep(2);
-      // Focus the writing area
       setTimeout(() => formContent.focus(), 100);
     });
 
-    $('#btnPrevStep2').addEventListener('click', () => {
-      showStep(1);
-    });
+    $('#btnPrevStep2')?.addEventListener('click', () => showStep(1));
 
-    $('#btnNextStep2').addEventListener('click', () => {
-      // Validate content
-      if (!formContent.value.trim()) {
-        formContent.reportValidity();
-        return;
-      }
+    $('#btnNextStep2')?.addEventListener('click', () => {
+      if (!formContent.value.trim()) { formContent.reportValidity(); return; }
       showStep(3);
     });
 
-    $('#btnPrevStep3').addEventListener('click', () => {
-      showStep(2);
-    });
+    $('#btnPrevStep3')?.addEventListener('click', () => showStep(2));
 
-    // Click step pills in header to jump
-    $$('.modal-step').forEach(stepEl => {
-      stepEl.addEventListener('click', () => {
-        const targetStep = parseInt(stepEl.dataset.step);
-        showStep(targetStep);
-      });
-    });
+    $('#modalClose')?.addEventListener('click', closeModal);
+    $('#modalOverlay')?.addEventListener('click', closeModal);
+    $('#btnCancel')?.addEventListener('click', closeModal);
 
-    // Close button & overlay
-    $('#modalClose').addEventListener('click', closeModal);
-    $('#modalOverlay').addEventListener('click', closeModal);
-    $('#btnCancel').addEventListener('click', closeModal);
-
-    // Form submit
     writingForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
       const isEditing = Boolean(editingIdInput.value);
       const title = formTitle.value.trim();
       const author = formAuthor.value || 'neerav';
-      localStorage.setItem('last-author', author); // Remember for next time
+      localStorage.setItem('last-author', author);
       const type = formType.value;
       const date = formDate.value;
       const excerpt = formExcerpt.value.trim();
@@ -1006,6 +1887,8 @@
         .split(',')
         .map(t => slugify(t.trim()))
         .filter(Boolean);
+      const marginalia = formMarginalia ? formMarginalia.value.trim() : '';
+      const inResponseTo = formInResponseTo ? formInResponseTo.value : null;
       const readingTime = formReadingTime.value.trim() || '2 min read';
       const collection = formCollection.value || null;
       const featured = formFeatured.checked;
@@ -1019,6 +1902,8 @@
         excerpt,
         content,
         tags,
+        marginalia,
+        inResponseTo: inResponseTo || null,
         readingTime,
         featured,
         collection
@@ -1028,11 +1913,11 @@
         updateWriting(editingIdInput.value, writingData);
       } else {
         addWriting(writingData);
+        localStorage.removeItem(DRAFT_KEY);
       }
 
       closeModal();
 
-      // Refresh current page view
       if (currentPage === 'reading' && currentReadingId) {
         renderReading(currentReadingId);
       } else if (currentPage === 'archive') {
@@ -1044,13 +1929,24 @@
       }
     });
 
-    // Share button on reading page
-    $('#btnShare').addEventListener('click', () => {
+    // Favorite button on reading view
+    $('#btnBookmarkReading')?.addEventListener('click', () => {
+      if (!currentReadingId) return;
+      const nowFav = toggleFavorite(currentReadingId);
+      const btn = $('#btnBookmarkReading');
+      if (btn) {
+        btn.classList.toggle('favorited', nowFav);
+        const textSpan = btn.querySelector('.admin-btn-text');
+        if (textSpan) textSpan.textContent = nowFav ? 'Favorited' : 'Favorite';
+      }
+    });
+
+    // Share snippet button
+    $('#btnShare')?.addEventListener('click', () => {
       if (!currentReadingId) return;
       const writing = getWritings().find(w => w.id === currentReadingId);
       if (!writing) return;
 
-      // Generate JavaScript code snippet for the writing
       const snippet = `  {
     id: '${writing.id}',
     title: '${writing.title.replace(/'/g, "\\'")}',
@@ -1059,32 +1955,30 @@
     author: '${writing.author || 'neerav'}',
     excerpt: '${writing.excerpt.replace(/'/g, "\\'")}',
     content: \`${writing.content.replace(/`/g, '\\`')}\`,
-    tags: [${writing.tags.map(t => `'${t}'`).join(', ')}],
-    readingTime: '${writing.readingTime}',
+    tags: [${(writing.tags || []).map(t => `'${t}'`).join(', ')}],
+    readingTime: '${writing.readingTime || '2 min read'}',
     featured: ${writing.featured || false},
-    collection: ${writing.collection ? `'${writing.collection}'` : 'null'}
+    collection: ${writing.collection ? `'${writing.collection}'` : 'null'},
+    inResponseTo: ${writing.inResponseTo ? `'${writing.inResponseTo}'` : 'null'},
+    marginalia: \`${(writing.marginalia || '').replace(/`/g, '\\`')}\`
   }`;
 
-      // Copy to clipboard
       navigator.clipboard.writeText(snippet).then(() => {
-        alert('✨ Code snippet copied!\n\nYou can now:\n1. Paste it into data/writings.js on GitHub\n2. Or share it via WhatsApp/Email');
+        alert('✨ Code snippet copied!\n\nYou can now:\n1. Paste it into data/writings.js\n2. Or share it with your friend');
       }).catch(() => {
-        // Fallback: show in a prompt for manual copy
         prompt('Copy this code snippet:', snippet);
       });
     });
 
     // Edit button on reading page
-    $('#btnEdit').addEventListener('click', () => {
+    $('#btnEdit')?.addEventListener('click', () => {
       if (!currentReadingId) return;
       const writing = getWritings().find(w => w.id === currentReadingId);
-      if (writing) {
-        openModal(writing);
-      }
+      if (writing) openModal(writing);
     });
 
     // Delete button on reading page
-    $('#btnDelete').addEventListener('click', () => {
+    $('#btnDelete')?.addEventListener('click', () => {
       if (!currentReadingId) return;
       if (confirm('Are you sure you want to delete this writing? This cannot be undone.')) {
         deleteWriting(currentReadingId);
@@ -1092,30 +1986,23 @@
       }
     });
 
-    // Export/Import
-    const btnExport = $('#btnExport');
-    const btnImport = $('#btnImport');
-    const importFile = $('#importFile');
+    // Backup Export/Import
+    $('#btnExport')?.addEventListener('click', exportData);
+    $('#btnImport')?.addEventListener('click', () => $('#importFile')?.click());
+    $('#importFile')?.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        importData(e.target.files[0]);
+      }
+    });
 
-    if (btnExport) btnExport.addEventListener('click', exportData);
-    if (btnImport) btnImport.addEventListener('click', () => importFile.click());
-    if (importFile) {
-      importFile.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-          importData(e.target.files[0]);
-        }
-      });
-    }
-
-    // Auto-update hint based on type
     formType.addEventListener('change', (e) => {
       const hint = $('#contentHint');
       const subHint = $('#contentSubHint');
       if (e.target.value === 'poem') {
-        if (hint) hint.textContent = 'Poem Mode: Line breaks preserved exactly';
+        if (hint) hint.textContent = 'Poem Mode: Preserves line breaks';
         if (subHint) subHint.textContent = 'Tip: Press Enter for new lines, or Enter twice between stanzas.';
       } else {
-        if (hint) hint.textContent = 'Prose Mode: Paragraphs formatted automatically';
+        if (hint) hint.textContent = 'Prose Mode: Natural paragraph flow';
         if (subHint) subHint.textContent = 'Tip: Write freely. Press Enter twice to start a new paragraph.';
       }
     });
@@ -1124,10 +2011,11 @@
   // ——— Keyboard Navigation ———
   function initKeyboard() {
     document.addEventListener('keydown', (e) => {
-      // ESC closes modal or mobile menu
       if (e.key === 'Escape') {
         if (!adminModal.hidden) {
           closeModal();
+        } else if (!$('#postcardModal')?.hidden) {
+          $('#postcardModal').hidden = true;
         } else {
           navToggle.classList.remove('open');
           navLinks.classList.remove('open');
@@ -1146,30 +2034,25 @@
     const lockError = $('#lockError');
     const lockScreenContent = lockScreen.querySelector('.lock-screen-content');
 
-    // Accepted passwords
     const CORRECT_PASSWORDS = ['terrible judgement', 'friendship'];
 
-    // Check if already unlocked in this session
     if (sessionStorage.getItem('archive-unlocked') === 'true') {
       lockScreen.hidden = true;
       mainContent.hidden = false;
       return;
     }
 
-    // Show lock screen
     lockScreen.hidden = false;
     mainContent.hidden = true;
 
     lockForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const enteredPassword = lockPassword.value;
+      const enteredPassword = lockPassword.value.trim().toLowerCase();
 
       if (CORRECT_PASSWORDS.includes(enteredPassword)) {
-        // Correct password
         sessionStorage.setItem('archive-unlocked', 'true');
         lockError.hidden = true;
 
-        // Smooth transition
         lockScreen.style.opacity = '0';
         setTimeout(() => {
           lockScreen.hidden = true;
@@ -1177,7 +2060,6 @@
           lockScreen.style.opacity = '1';
         }, 500);
       } else {
-        // Wrong password - shake animation
         lockError.hidden = false;
         lockScreenContent.classList.add('shake');
         lockPassword.value = '';
@@ -1203,7 +2085,7 @@
     });
   }
 
-  // ——— Initialize ———
+  // ——— Initialize Application ———
   function init() {
     initLockScreen();
     initLockButton();
@@ -1213,24 +2095,24 @@
     initAdmin();
     initKeyboard();
     initParticles();
+    initAmbientSound();
+    initReaderCustomizer();
+    initPostcardModal();
+    initZenMode();
+    initDraftEngine();
     setFooterYear();
 
-    // Hide admin tools on initial load
     const adminTools = $('#adminTools');
-    if (adminTools) {
-      adminTools.hidden = true;
-    }
+    if (adminTools) adminTools.hidden = true;
 
-    // Render home page content
     renderFeatured();
+    initQuoteOfDay();
 
-    // Initial reveal
     requestAnimationFrame(() => {
       observeReveals();
     });
   }
 
-  // Run on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

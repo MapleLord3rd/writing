@@ -65,6 +65,29 @@
         <a href="#" data-nav="timeline" class="nav-link">Timeline</a>
         <a href="#" data-nav="desk" class="nav-link">Writer's Desk</a>
         <a href="#" data-nav="about" class="nav-link">About</a>
+        <div class="ambient-sound-control">
+          <button class="theme-toggle ambient-toggle-btn" id="ambientToggleBtn" title="Ambient Soundscapes" aria-label="Toggle ambient soundscapes">
+            <svg class="ambient-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+            </svg>
+            <span class="ambient-status-dot" id="ambientStatusDot"></span>
+          </button>
+          <div class="ambient-popover" id="ambientPopover" hidden>
+            <div class="ambient-popover-header">
+              <span>Ambient Sounds</span>
+            </div>
+            <div class="ambient-options">
+              <button type="button" class="ambient-opt active" data-sound="off">Off</button>
+              <button type="button" class="ambient-opt" data-sound="rain">🌧 Rain</button>
+              <button type="button" class="ambient-opt" data-sound="fire">🔥 Fire</button>
+            </div>
+            <div class="ambient-volume-row">
+              <input type="range" id="ambientVolume" min="0" max="1" step="0.05" value="0.4" aria-label="Ambient volume">
+              <span class="ambient-vol-label" id="ambientVolLabel">40%</span>
+            </div>
+          </div>
+        </div>
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
           <svg class="theme-icon theme-icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
@@ -134,6 +157,35 @@
       </div>
     </div>
 
+    <!-- Excerpt of the Day -->
+    <div class="section quote-of-day">
+      <div class="container container--narrow">
+        <div class="quote-card reveal-up" id="quoteCard">
+          <div class="quote-header">
+            <span class="quote-pill">✦ Excerpt of the Day</span>
+            <button class="quote-shuffle-btn" id="btnShuffleQuote" title="Shuffle another quote" aria-label="Shuffle quote">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Shuffle</span>
+            </button>
+          </div>
+          <blockquote class="quote-text" id="quoteText">
+            &ldquo;Some people walk into your life and change everything — quietly, like the first light of morning that makes you realize the darkness wasn't permanent.&rdquo;
+          </blockquote>
+          <div class="quote-footer">
+            <div class="quote-source">
+              <span class="quote-author" id="quoteAuthor">By Neerav</span>
+              <span class="card-dot" aria-hidden="true">·</span>
+              <a href="#" class="quote-title-link" id="quoteTitleLink" data-quote-id="a-friend-like-you">From &ldquo;A Friend Like You&rdquo; →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Recently Written -->
     <div class="section recently-written">
       <div class="container">
@@ -174,6 +226,7 @@
         </div>
         <div class="archive-filters" role="tablist" aria-label="Filter by type">
           <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">All</button>
+          <button class="filter-btn" data-filter="favorites" role="tab" aria-selected="false">✦ Favorites</button>
           <button class="filter-btn" data-filter="poem" role="tab" aria-selected="false">Poems</button>
           <button class="filter-btn" data-filter="story" role="tab" aria-selected="false">Stories</button>
           <button class="filter-btn" data-filter="article" role="tab" aria-selected="false">Articles</button>
@@ -388,6 +441,18 @@
           </svg>
         </button>
       </div>
+
+      <!-- Draft Recovery Banner -->
+      <div class="draft-banner" id="draftBanner" hidden>
+        <div class="draft-banner-text">
+          <span>📝 Unsaved draft found from <strong id="draftTime">earlier</strong></span>
+        </div>
+        <div class="draft-banner-actions">
+          <button type="button" class="draft-btn" id="btnRestoreDraft">Restore Draft</button>
+          <button type="button" class="draft-btn draft-btn--discard" id="btnDiscardDraft">Discard</button>
+        </div>
+      </div>
+
       <form class="modal-form" id="writingForm">
         <input type="hidden" id="editingId" value="">
 
@@ -441,7 +506,16 @@
           <div class="form-group">
             <div class="form-header-row">
               <label for="formContent" class="form-label">Your Writing *</label>
-              <span class="form-hint-pill" id="contentHint">Writing Mode: Line breaks are preserved naturally</span>
+              <div class="form-header-tools">
+                <span class="form-word-counter" id="formWordCounter">0 words</span>
+                <button type="button" class="btn-zen-toggle" id="btnZenToggle" title="Distraction-Free Zen Mode">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  </svg>
+                  <span>Zen Mode</span>
+                </button>
+                <span class="form-hint-pill" id="contentHint">Writing Mode: Preserves line breaks</span>
+              </div>
             </div>
             <textarea
               id="formContent"
@@ -465,6 +539,20 @@ Write freely just as you would in a journal.
 
         <!-- Step 3: Optional Details -->
         <div class="form-step" data-step="3">
+          <div class="form-group">
+            <label for="formInResponseTo" class="form-label">Literary Dialogue / In Response To</label>
+            <select id="formInResponseTo" class="form-input">
+              <option value="">None (Standalone Piece)</option>
+            </select>
+            <span class="form-hint">Connect this piece in dialogue to an existing work by Neerav or Friend</span>
+          </div>
+
+          <div class="form-group">
+            <label for="formMarginalia" class="form-label">Marginalia / Behind the Lines Note</label>
+            <textarea id="formMarginalia" class="form-textarea form-textarea-small" rows="3" placeholder="Optional backstory, secret note, or context for this piece..."></textarea>
+            <span class="form-hint">Readers can tap an interactive wax seal / note drawer to view your thoughts behind the piece</span>
+          </div>
+
           <div class="form-group">
             <label for="formTags" class="form-label">Tags</label>
             <input type="text" id="formTags" class="form-input" placeholder="friendship, gratitude, life">
@@ -505,6 +593,20 @@ Write freely just as you would in a journal.
 
   <!-- Admin Tools (in reading page) -->
   <div class="admin-tools" id="adminTools" hidden>
+    <button class="admin-tool-btn" id="btnBookmarkReading" title="Bookmark / Favorite this writing">
+      <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+      <span class="admin-btn-text">Favorite</span>
+    </button>
+    <button class="admin-tool-btn" id="btnPostcard" title="Generate aesthetic literary postcard image">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </svg>
+      <span class="admin-btn-text">Postcard</span>
+    </button>
     <button class="admin-tool-btn" id="btnShare" title="Copy code snippet to share or add to GitHub">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -523,6 +625,104 @@ Write freely just as you would in a journal.
         <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
       </svg>
     </button>
+  </div>
+
+  <!-- Floating Reader Customization Panel (Aa) -->
+  <div class="reader-panel" id="readerPanel" hidden>
+    <button class="reader-panel-toggle" id="btnReaderToggle" aria-label="Customize reading view" title="Reader Preferences (Aa)">
+      <span class="reader-toggle-label">Aa</span>
+    </button>
+    <div class="reader-panel-popover" id="readerPopover" hidden>
+      <div class="reader-panel-header">
+        <span class="reader-panel-title">Reading Preferences</span>
+      </div>
+      <div class="reader-setting">
+        <span class="reader-setting-label">Typeface</span>
+        <div class="reader-btn-group" id="readerFontGroup">
+          <button type="button" class="reader-btn active" data-font="serif">Serif</button>
+          <button type="button" class="reader-btn" data-font="sans">Sans</button>
+          <button type="button" class="reader-btn" data-font="mono">Mono</button>
+        </div>
+      </div>
+      <div class="reader-setting">
+        <span class="reader-setting-label">Text Size</span>
+        <div class="reader-btn-group" id="readerSizeGroup">
+          <button type="button" class="reader-btn" id="btnFontSmaller">A-</button>
+          <button type="button" class="reader-btn" id="btnFontReset">100%</button>
+          <button type="button" class="reader-btn" id="btnFontLarger">A+</button>
+        </div>
+      </div>
+      <div class="reader-setting">
+        <span class="reader-setting-label">Column Width</span>
+        <div class="reader-btn-group" id="readerWidthGroup">
+          <button type="button" class="reader-btn" data-width="narrow">Narrow</button>
+          <button type="button" class="reader-btn active" data-width="medium">Normal</button>
+          <button type="button" class="reader-btn" data-width="wide">Wide</button>
+        </div>
+      </div>
+      <div class="reader-setting reader-setting--checkbox">
+        <label class="form-checkbox">
+          <input type="checkbox" id="stanzaFocusCheck">
+          <span>Stanza Focus (Dim other verses)</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aesthetic Postcard Modal -->
+  <div class="modal" id="postcardModal" role="dialog" aria-labelledby="postcardTitle" aria-modal="true" hidden>
+    <div class="modal-overlay" id="postcardOverlay"></div>
+    <div class="modal-content modal-content--postcard">
+      <div class="modal-header">
+        <h2 class="modal-title" id="postcardTitle">Create Literary Postcard</h2>
+        <button class="modal-close" id="postcardClose" aria-label="Close dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="postcard-body">
+        <div class="postcard-preview-container">
+          <canvas id="postcardCanvas" width="1080" height="1080"></canvas>
+        </div>
+        <div class="postcard-controls">
+          <div class="form-group">
+            <label class="form-label">Postcard Theme</label>
+            <div class="postcard-themes" id="postcardThemes">
+              <button type="button" class="postcard-theme-btn active" data-theme="parchment">Warm Parchment</button>
+              <button type="button" class="postcard-theme-btn" data-theme="midnight">Midnight Obsidian</button>
+              <button type="button" class="postcard-theme-btn" data-theme="crimson">Crimson Velvet</button>
+              <button type="button" class="postcard-theme-btn" data-theme="sage">Sage Herbal</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="postcardExcerptSelect" class="form-label">Featured Excerpt / Stanza</label>
+            <select id="postcardExcerptSelect" class="form-input"></select>
+          </div>
+          <div class="postcard-actions">
+            <button type="button" class="btn-primary" id="btnDownloadPostcard">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>Download Image (.png)</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btnCopyPostcard">Copy Image</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Distraction-Free Zen Fullscreen Mode -->
+  <div class="zen-mode-overlay" id="zenOverlay" hidden>
+    <div class="zen-header">
+      <span class="zen-title" id="zenDocTitle">Distraction-Free Zen Canvas</span>
+      <div class="zen-stats" id="zenStats">0 words · 0 lines</div>
+      <button type="button" class="btn-secondary zen-exit-btn" id="btnExitZen">Exit Zen Mode (Esc)</button>
+    </div>
+    <div class="zen-body">
+      <textarea id="zenTextarea" class="zen-textarea" placeholder="Let your thoughts flow freely..."></textarea>
+    </div>
   </div>
 </div>
 <!-- End Main Content -->
