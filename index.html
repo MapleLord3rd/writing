@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Archive — A Personal Literary Collection</title>
+  <meta name="description" content="Poems, stories, thoughts, and things I couldn't leave unwritten.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Grain overlay -->
+  <div class="grain-overlay" aria-hidden="true"></div>
+
+  <!-- Floating particles -->
+  <canvas id="particles" aria-hidden="true"></canvas>
+
+  <!-- Navigation -->
+  <nav class="nav" id="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" data-nav="home" aria-label="Home">
+        <span class="nav-logo-text">The Archive</span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <div class="nav-links" id="navLinks">
+        <a href="#" data-nav="home" class="nav-link">Home</a>
+        <a href="#" data-nav="archive" class="nav-link">Archive</a>
+        <a href="#" data-nav="collections" class="nav-link">Collections</a>
+        <a href="#" data-nav="timeline" class="nav-link">Timeline</a>
+        <a href="#" data-nav="desk" class="nav-link">Writer's Desk</a>
+        <a href="#" data-nav="about" class="nav-link">About</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <svg class="theme-icon theme-icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="theme-icon theme-icon--moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Reading progress bar -->
+  <div class="reading-progress" id="readingProgress" aria-hidden="true">
+    <div class="reading-progress-bar" id="readingProgressBar"></div>
+  </div>
+
+  <!-- ==================== HOME PAGE ==================== -->
+  <section class="page page--home active" id="page-home">
+
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="hero-ornament" aria-hidden="true">✦</div>
+        <h1 class="hero-name reveal-text">
+          <span class="hero-name-line">The Writer's</span>
+          <span class="hero-name-line">Archive</span>
+        </h1>
+        <p class="hero-subtitle reveal-up">
+          Poems, stories, thoughts, and things I couldn't leave unwritten.
+        </p>
+        <div class="hero-line" aria-hidden="true"></div>
+        <button class="btn-enter reveal-up" data-nav="archive">
+          <span class="btn-enter-text">Enter the Archive</span>
+          <span class="btn-enter-arrow" aria-hidden="true">→</span>
+        </button>
+        <div class="hero-scroll-hint reveal-up" aria-hidden="true">
+          <span>Scroll</span>
+          <div class="hero-scroll-line"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Introduction -->
+    <div class="section intro">
+      <div class="container">
+        <div class="intro-content reveal-up">
+          <div class="intro-ornament" aria-hidden="true">&ldquo;</div>
+          <p class="intro-text">
+            This is the other gift I was talking about — I kinda know you love writing things,
+            and so, this gift is more of the actual surprise. <br>
+            Write your poems, stories and thoughts here, they are yours to remember. <br>
+          </p>
+          <p class="intro-text">
+            Nothing here is in a hurry. Take your sweet time.
+          </p>
+          <div class="intro-divider" aria-hidden="true">
+            <span>✦</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recently Written -->
+    <div class="section recently-written">
+      <div class="container">
+        <div class="section-header reveal-up">
+          <span class="section-label">Recently Written</span>
+          <h2 class="section-title">Fresh from the Desk</h2>
+        </div>
+        <div class="featured-grid" id="featuredGrid">
+          <!-- Populated by JS -->
+        </div>
+        <div class="section-footer reveal-up">
+          <a href="#" class="link-subtle" data-nav="archive">
+            View the full archive <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ==================== ARCHIVE PAGE ==================== -->
+  <section class="page page--archive" id="page-archive">
+    <div class="container">
+
+      <div class="archive-header reveal-up">
+        <span class="section-label">The Collection</span>
+        <h2 class="page-title">The Archive</h2>
+        <p class="page-desc">Every poem, story, article, and essay — gathered and preserved.</p>
+      </div>
+
+      <!-- Filters -->
+      <div class="archive-controls reveal-up">
+        <div class="archive-author-filters" role="tablist" aria-label="Filter by author">
+          <span class="author-filter-label">Author:</span>
+          <button class="author-filter-btn active" data-author-filter="all" role="tab" aria-selected="true">Both</button>
+          <button class="author-filter-btn" data-author-filter="neerav" role="tab" aria-selected="false">Neerav</button>
+          <button class="author-filter-btn" data-author-filter="friend" role="tab" aria-selected="false">Friend</button>
+        </div>
+        <div class="archive-filters" role="tablist" aria-label="Filter by type">
+          <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">All</button>
+          <button class="filter-btn" data-filter="poem" role="tab" aria-selected="false">Poems</button>
+          <button class="filter-btn" data-filter="story" role="tab" aria-selected="false">Stories</button>
+          <button class="filter-btn" data-filter="article" role="tab" aria-selected="false">Articles</button>
+          <button class="filter-btn" data-filter="essay" role="tab" aria-selected="false">Essays</button>
+          <button class="filter-btn" data-filter="note" role="tab" aria-selected="false">Notes</button>
+        </div>
+        <div class="archive-search">
+          <label for="searchInput" class="sr-only">Search writings</label>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search the archive..." autocomplete="off">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div class="archive-sort">
+          <label for="sortSelect" class="sr-only">Sort writings</label>
+          <select id="sortSelect" class="sort-select">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="title">By Title</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Active Tags -->
+      <div class="active-tags" id="activeTags"></div>
+
+      <!-- Archive Grid -->
+      <div class="archive-grid" id="archiveGrid">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- No Results -->
+      <div class="archive-empty" id="archiveEmpty" hidden>
+        <p class="archive-empty-text">No writings found matching your search.</p>
+        <button class="btn-text" id="clearFilters">Clear all filters</button>
+      </div>
+
+      <!-- Archive Stats -->
+      <div class="archive-stats" id="archiveStats">
+        <!-- Populated by JS -->
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== READING PAGE ==================== -->
+  <section class="page page--reading" id="page-reading">
+    <article class="reading" id="readingContent">
+      <!-- Populated by JS -->
+    </article>
+  </section>
+
+  <!-- ==================== COLLECTIONS PAGE ==================== -->
+  <section class="page page--collections" id="page-collections">
+    <div class="container">
+      <div class="archive-header reveal-up">
+        <span class="section-label">Curated</span>
+        <h2 class="page-title">Collections</h2>
+        <p class="page-desc">Writings gathered by theme, mood, and season.</p>
+      </div>
+      <div class="collections-grid" id="collectionsGrid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== COLLECTION DETAIL ==================== -->
+  <section class="page page--collection-detail" id="page-collection-detail">
+    <div class="container">
+      <div class="archive-header reveal-up" id="collectionDetailHeader">
+        <!-- Populated by JS -->
+      </div>
+      <div class="archive-grid" id="collectionDetailGrid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== TAG PAGE ==================== -->
+  <section class="page page--tag" id="page-tag">
+    <div class="container">
+      <div class="archive-header reveal-up" id="tagHeader">
+        <!-- Populated by JS -->
+      </div>
+      <div class="archive-grid" id="tagGrid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== TIMELINE PAGE ==================== -->
+  <section class="page page--timeline" id="page-timeline">
+    <div class="container container--narrow">
+      <div class="archive-header reveal-up">
+        <span class="section-label">Chronological</span>
+        <h2 class="page-title">A Timeline of Words</h2>
+        <p class="page-desc">The writing journey, told in order.</p>
+      </div>
+      <div class="timeline" id="timeline">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== WRITER'S DESK ==================== -->
+  <section class="page page--desk" id="page-desk">
+    <div class="container container--narrow">
+      <div class="archive-header reveal-up">
+        <span class="section-label">Statistics</span>
+        <h2 class="page-title">The Writer's Desk</h2>
+        <p class="page-desc">Numbers behind the words.</p>
+      </div>
+      <div class="desk-stats" id="deskStats">
+        <!-- Populated by JS -->
+      </div>
+      <div class="desk-breakdown" id="deskBreakdown">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== ABOUT PAGE ==================== -->
+  <section class="page page--about" id="page-about">
+    <div class="container container--narrow">
+      <div class="about-content reveal-up">
+        <div class="about-portrait">
+          <div class="about-portrait-placeholder" aria-label="Writer portrait">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+        </div>
+        <span class="section-label">Our Shared Archive</span>
+        <h2 class="page-title about-name">Neerav & Friend</h2>
+
+        <div class="about-text">
+          <p>
+            This is a quiet, shared corner of the internet — a collaborative
+            archive of poems, stories, and thoughts written by the two of us.
+            Some are born from late-night conversations, some from quiet moments of reflection,
+            and some are things that simply insisted on being written down.
+          </p>
+          <p>
+            Writing, for us, is a way to remember, to understand, and to celebrate
+            the moments that matter. Every piece in this collection is a captured thought,
+            whether polished or raw.
+          </p>
+          <p>
+            Feel free to explore our writings, filter by author, or read through
+            our shared timeline.
+          </p>
+        </div>
+
+        <div class="about-details">
+          <div class="about-detail">
+            <span class="about-detail-label">Authors</span>
+            <span class="about-detail-value">Neerav · Friend</span>
+          </div>
+          <div class="about-detail">
+            <span class="about-detail-label">Favorite Genres</span>
+            <span class="about-detail-value">Poetry, Reflections, Personal Notes</span>
+          </div>
+          <div class="about-detail">
+            <span class="about-detail-label">Recurring Themes</span>
+            <span class="about-detail-value">Friendship, Memory, Time, Gratitude, Life</span>
+          </div>
+        </div>
+
+        <!-- Archive Management -->
+        <div class="archive-management">
+          <span class="about-detail-label">Backup & Restore</span>
+          <div class="data-tools">
+            <button class="data-tool-btn" id="btnExport">Export Archive (.json)</button>
+            <button class="data-tool-btn" id="btnImport">Import Archive (.json)</button>
+            <input type="file" id="importFile" accept=".json" hidden>
+          </div>
+        </div>
+
+        <div class="intro-divider" aria-hidden="true"><span>✦</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <p class="footer-text">Written, remembered, and archived.</p>
+        <p class="footer-copy">
+          <span class="mono-sm">&copy; <span id="footerYear"></span></span>
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating Add Button -->
+  <button class="btn-add-writing" id="btnAddWriting" aria-label="Add new writing" title="Add new writing">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+
+  <!-- Admin Modal -->
+  <div class="modal" id="adminModal" role="dialog" aria-labelledby="modalTitle" aria-modal="true" hidden>
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Add New Writing</h2>
+        <button class="modal-close" id="modalClose" aria-label="Close dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form class="modal-form" id="writingForm">
+        <input type="hidden" id="editingId" value="">
+
+        <div class="form-group">
+          <label for="formTitle" class="form-label">Title *</label>
+          <input type="text" id="formTitle" class="form-input" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="formAuthor" class="form-label">Author *</label>
+            <select id="formAuthor" class="form-input" required>
+              <option value="">Select author...</option>
+              <option value="neerav">Neerav</option>
+              <option value="friend">Friend</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="formType" class="form-label">Type *</label>
+            <select id="formType" class="form-input" required>
+              <option value="poem">Poem</option>
+              <option value="story">Story</option>
+              <option value="article">Article</option>
+              <option value="essay">Essay</option>
+              <option value="note">Note</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="formDate" class="form-label">Date *</label>
+          <input type="date" id="formDate" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="formExcerpt" class="form-label">Excerpt *</label>
+          <input type="text" id="formExcerpt" class="form-input" placeholder='"A short preview line shown on cards..."' required>
+          <span class="form-hint">This appears on cards in the archive</span>
+        </div>
+
+        <div class="form-group">
+          <label for="formContent" class="form-label">Content *</label>
+          <textarea id="formContent" class="form-textarea" rows="12" required placeholder="Your poem or writing here...
+
+For poems: line breaks are preserved exactly
+Leave blank lines between stanzas
+
+For prose: use double line breaks between paragraphs"></textarea>
+          <span class="form-hint" id="contentHint">Line breaks will be preserved for poems</span>
+        </div>
+
+        <div class="form-group">
+          <label for="formTags" class="form-label">Tags</label>
+          <input type="text" id="formTags" class="form-input" placeholder="friendship, gratitude, life">
+          <span class="form-hint">Separate with commas</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="formReadingTime" class="form-label">Reading Time</label>
+            <input type="text" id="formReadingTime" class="form-input" value="2 min read">
+          </div>
+          <div class="form-group">
+            <label for="formCollection" class="form-label">Collection</label>
+            <select id="formCollection" class="form-input">
+              <option value="">None</option>
+              <option value="personal">Personal</option>
+              <option value="reflections">Reflections</option>
+              <option value="moments">Moments</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-checkbox">
+            <input type="checkbox" id="formFeatured">
+            <span>Featured (show on home page)</span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSave">Save Writing</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Tools (in reading page) -->
+  <div class="admin-tools" id="adminTools" hidden>
+    <button class="admin-tool-btn" id="btnShare" title="Copy code snippet to share or add to GitHub">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span class="admin-btn-text">Share Snippet</span>
+    </button>
+    <button class="admin-tool-btn" id="btnEdit" title="Edit this writing">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
+    <button class="admin-tool-btn" id="btnDelete" title="Delete this writing">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+    </button>
+  </div>
+
+  <script src="data/writings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
