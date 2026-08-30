@@ -17,22 +17,44 @@ const ACHIEVEMENTS = [
   { id: 'all-poems', name: 'Archivist', desc: 'Read every writing.', category: 'milestones', rarity: 'epic', unlocks: ['theme-paper','theme-midnight','theme-minimalist'] },
   { id: 'ten-favorites', name: 'Curator', desc: 'Favorite ten writings.', hard: true, unlocks: [] }
 ];
+function getAchievementProgressValue(ac) {
+  const stats = getAchievementStats();
+  switch (ac.requirementType) {
+    case 'WORK_COUNT': return stats.worksWritten;
+    case 'WRITE_DAYS': return stats.streakDays;
+    case 'READ_COUNT': return stats.readCount;
+    case 'COMMENT_COUNT': return stats.commentCount;
+    default: return getMetricsValue(ac.metric, stats);
+  }
+}
+function getMetricsValue(metric, stats) {
+  const m = (stat, def) => (stats && typeof stats[stat] !== 'undefined') ? stats[stat] : def;
+  switch (metric) { case 'works': return m('worksWritten'); case 'faves': return m('favoriteCount'); case 'reads': return m('readCount'); default: return 0; }
+}
+function getAchievementStats() {
+  try { return JSON.parse(localStorage.getItem('archive-stats-v1')) || {}; } catch { return {}; }
+}
 function updateAchievementUI() {
   const container = document.getElementById('achievementList');
   if (!container) return;
   const a = getAchievements();
+  const stats = getAchievementStats();
   container.innerHTML = ACHIEVEMENTS.map(ac => {
     const unlocked = !!a[ac.id]?.unlocked;
     const rarity = ac.rarity || (ac.easy ? 'common' : ac.medium ? 'uncommon' : 'rare');
     const category = ac.category || (ac.easy ? 'writing' : 'exploration');
-    const progress = unlocked ? 'Unlocked' : (ac.easy ? 'Easy' : ac.medium ? 'Medium' : 'Hard');
-    const name = (ac.hidden && !unlocked) ? '??? Secret Achievement' : ac.name;
-    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''} rarity-${rarity}" data-id="${ac.id}" aria-label="${name}">
-      <div class="achievement-header"><span class="achievement-icon">${unlocked ? '✦' : '◈'}</span><h4>${name}</h4></div>
+    const progress = unlocked ? 1 : Math.min(1, ((getAchievementProgressValue(ac) || 0) / (ac.target || 1)));
+    const pct = Math.round(progress * 100);
+    const current = Math.min(getAchievementProgressValue(ac) || 0, ac.target || 0);
+    const name = (ac.hidden && !unlocked) ? '???' : ac.name;
+    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''} rarity-${rarity}" data-id="${ac.id}" aria-label="${name}" role="button" tabindex="0">
+      <div class="achievement-icon">${unlocked ? '✦' : ac.hidden ? '❓' : '◈'}</div>
+      <h4 class="achievement-name">${name}</h4>
       <p class="achievement-desc">${(ac.hidden && !unlocked) ? 'Continue exploring the website...' : ac.desc}</p>
-      <div class="achievement-meta"><span class="achievement-category">${category} • ${rarity}</span><span class="achievement-difficulty">${progress}</span></div>
-      <div class="achievement-bar-wrap"><div class="achievement-bar" style="width:${unlocked?100:0}%"></div></div>
-      ${unlocked ? `<div class="achievement-date">Unlocked ${new Date(a[ac.id].date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>` : ''}
+      <div class="achievement-bar-wrap"><div class="achievement-bar" style="width:${pct}%"></div></div>
+      <div class="achievement-count">${unlocked ? '100%' : `${current}/${ac.target}`}</div>
+      <div class="achievement-meta"><span class="achievement-category">${category} • ${rarity}</span></div>
+      ${unlocked ? `<div class="achievement-date">UNLOCKED · ${new Date(a[ac.id].date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>` : `<div class="achievement-date">LOCKED</div>`}
     </div>`;
   }).join('');
 }

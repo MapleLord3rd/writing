@@ -827,6 +827,19 @@
     </div>
   </section>
 
+  <!-- ==================== ACHIEVEMENTS ==================== -->
+  <section class="page page--achievements" id="page-achievements">
+    <div class="container">
+      <div class="archive-header reveal-up">
+        <span class="section-label">Your Journey</span>
+        <h2 class="page-title">Achievements</h2>
+        <p class="page-desc">Keep writing. There is always another one.</p>
+      </div>
+      <div id="achievementSummary" class="achievement-summary"></div>
+      <div id="achievementList" class="achievement-grid"></div>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
@@ -1227,13 +1240,6 @@ Write freely just as you would in a journal.
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data/writings.js?v=2.6"></script>
-  <!-- Achievement List -->
-  <section class="page page--achievements" id="page-achievements">
-    <div class="container"><h2>Achievements</h2><p class="page-desc">Unlock features by reading, writing, and exploring The Archive.</p><div id="achievementList" class="achievement-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;"></div></div>
-  </section>
-    <div class="container"><h2>Achievements</h2><div id="achievementList" class="achievement-grid"></div></div>
-  </section>
-
   <!-- Achievement Popup -->
   <div id="achievementPopup" class="achievement-popup" hidden aria-live="polite">
     <div class="popup-inner"><span class="popup-badge">✦</span><h3 class="popup-title">Unlocked!</h3><p class="popup-desc"></p></div>
