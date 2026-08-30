@@ -1522,6 +1522,10 @@
       case 'about':
         $('#page-about').classList.add('active');
         break;
+      case 'achievements':
+        $('#page-achievements').classList.add('active');
+        if (typeof fillAchievements === 'function') fillAchievements();
+        break;
     }
 
     requestAnimationFrame(() => {

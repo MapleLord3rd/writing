@@ -44,6 +44,8 @@ function showAchievementPopup(id) {
 function getAchievements() { try { return JSON.parse(localStorage.getItem(ACHIEVEMENT_STORE_KEY)) || {}; } catch { return {}; } }
 function saveAchievements(data) { localStorage.setItem(ACHIEVEMENT_STORE_KEY, JSON.stringify(data)); }
 function isValidWriting(text) { if (!text || typeof text !== 'string') return false; const trimmed = text.trim(); const lines = trimmed.split(/\r?\n/).filter(l => l.trim().length > 0); return trimmed.length >= 30 && lines.length >= 2; }
+function fillAchievements() { const c = document.getElementById('achievementList'); if (c) { if (typeof ACHIEVEMENTS === 'undefined') return; updateAchievementUI(); } }
+document.addEventListener('DOMContentLoaded', fillAchievements);
 function awardAchievement(id) { const a = getAchievements(); if (!a[id]) { a[id] = { unlocked: true, date: new Date().toISOString() }; saveAchievements(a); updateAchievementUI(); showAchievementPopup(id); return true; } return false; }
 function isAchievementUnlocked(id) { return !!(getAchievements()[id]?.unlocked); }
 function getUnlockedThemes() { const u = new Set(['light','dark']); ACHIEVEMENTS.forEach(a => { if (a.unlocks && isAchievementUnlocked(a.id)) a.unlocks.forEach(t => u.add(t)); }); return Array.from(u); }
