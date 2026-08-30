@@ -97,7 +97,114 @@
     });
   }
 
-  // ——— Data Management (Reconciles Code Base + Local Storage + Deletions) ———
+  // ——— Supabase Online Publishing Backend ———
+  const SUPABASE_URL = 'https://llulyiaxnmrrdjprqeec.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdWx5aWF4bm1ycmRqcHJxZWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwODUwNjYsImV4cCI6MjEwMzY2MTA2Nn0.X0CS_w-BWvGLX4IxjX_CByMlimMFkquhsAPTxbotonA';
+
+  let supabase = null;
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  let currentAuthUid = null;
+  let _databaseWritings = null;
+  let _writingsCache = null;
+
+  function invalidateWritingsCache() {
+    _writingsCache = null;
+  }
+
+  // Maps database row to application object
+  function mapWorkFromDb(w) {
+    if (!w) return null;
+    return {
+      id: w.id,
+      title: w.title,
+      author: w.author || 'neerav',
+      type: w.type || 'story',
+      date: w.date || new Date().toISOString().split('T')[0],
+      excerpt: w.excerpt || '',
+      content: w.content || '',
+      tags: Array.isArray(w.tags) ? w.tags : [],
+      marginalia: w.marginalia || '',
+      inResponseTo: w.in_response_to || w.inResponseTo || null,
+      readingTime: w.reading_time || w.readingTime || '2 min read',
+      featured: Boolean(w.featured),
+      collection: w.collection || null,
+      is_published: w.is_published !== false,
+      author_id: w.author_id,
+      created_at: w.created_at,
+      updated_at: w.updated_at
+    };
+  }
+
+  // Maps application object to database row
+  function mapWorkToDb(w, authUid) {
+    return {
+      id: w.id,
+      title: w.title,
+      author: w.author || 'neerav',
+      type: w.type || 'story',
+      date: w.date || new Date().toISOString().split('T')[0],
+      excerpt: w.excerpt || '',
+      content: w.content || '',
+      tags: Array.isArray(w.tags) ? w.tags : [],
+      marginalia: w.marginalia || '',
+      in_response_to: w.inResponseTo || null,
+      reading_time: w.readingTime || '2 min read',
+      featured: Boolean(w.featured),
+      collection: w.collection || null,
+      is_published: true,
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      author_id: authUid || null
+    };
+  }
+
+  async function initSupabaseAuth() {
+    if (!supabase) return null;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        currentAuthUid = session.user.id;
+        return currentAuthUid;
+      }
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (data && data.user) {
+        currentAuthUid = data.user.id;
+      } else if (error) {
+        console.warn('Anonymous sign-in notice:', error.message);
+      }
+    } catch (e) {
+      console.warn('Supabase auth init error:', e);
+    }
+    return currentAuthUid;
+  }
+
+  async function loadSharedWorks() {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('works')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase fetch error:', error.message);
+        return;
+      }
+
+      if (Array.isArray(data)) {
+        _databaseWritings = data.map(mapWorkFromDb);
+        invalidateWritingsCache();
+      }
+    } catch (e) {
+      console.warn('loadSharedWorks error:', e);
+    }
+  }
+
+  // ——— Data Management (Reconciles Online DB + Code Base + Local Storage) ———
   function getDeletedIds() {
     try {
       const stored = localStorage.getItem(DELETED_KEY);
@@ -118,47 +225,36 @@
     }
   }
 
-  // ——— Cached writings (invalidated by any write through addWriting/updateWriting/deleteWriting/saveCustomWritings) ———
-  let _writingsCache = null;
-
-  function invalidateWritingsCache() {
-    _writingsCache = null;
-  }
-
   function getWritings() {
     if (_writingsCache) return _writingsCache;
 
     const baseWritings = (typeof WRITINGS !== 'undefined' && Array.isArray(WRITINGS)) ? WRITINGS : [];
     const deletedIds = getDeletedIds();
-
-    // Migrate any truly custom items from legacy storage key if needed
-    if (!localStorage.getItem(CUSTOM_STORAGE_KEY) && localStorage.getItem(STORAGE_KEY)) {
-      try {
-        const legacy = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (Array.isArray(legacy)) {
-          const baseIds = new Set(baseWritings.map(w => w.id));
-          const trulyCustom = legacy.filter(w => !baseIds.has(w.id));
-          localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(trulyCustom));
-        }
-      } catch (e) {}
-    }
-
-    const customWritings = getCustomWritings();
     const map = new Map();
 
-    // 1. Add base writings from data/writings.js (unless marked deleted)
+    // 1. Add base static writings from writings.js (unless deleted)
     baseWritings.forEach(w => {
       if (!deletedIds.includes(w.id)) {
         map.set(w.id, { ...w });
       }
     });
 
-    // 2. Overlay custom writings added or edited locally (unless marked deleted)
+    // 2. Add local custom writings (fallback or offline)
+    const customWritings = getCustomWritings();
     customWritings.forEach(w => {
       if (!deletedIds.includes(w.id)) {
         map.set(w.id, { ...w });
       }
     });
+
+    // 3. Overlay online published writings from Supabase
+    if (Array.isArray(_databaseWritings)) {
+      _databaseWritings.forEach(w => {
+        if (!deletedIds.includes(w.id)) {
+          map.set(w.id, { ...w });
+        }
+      });
+    }
 
     _writingsCache = Array.from(map.values());
     return _writingsCache;
@@ -166,85 +262,86 @@
 
   function saveCustomWritings(writings) {
     localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(writings));
-    // Also sync to legacy for compatibility
     localStorage.setItem(STORAGE_KEY, JSON.stringify(writings));
     invalidateWritingsCache();
   }
 
-  // IMPORTANT SECURITY NOTE: A browser cannot safely hold a GitHub token.
-  // The only safe way for '+ button → git push → visible everywhere' is a server/backend
-  // (Netlify Function / Vercel Edge / GitHub Actions). Token in browser = stolen by anyone.
-  // This function is left here for reference only; do NOT call with a real token in public HTML.
-  function commitToGitHub(fileContent, token) {
-    alert('SECURITY BLOCK: Do not enter your GitHub token in a public browser page. Use a server endpoint (e.g., Netlify Function) instead, or commit manually via git.');
-  }
-
-  function generateGitPatch(updatedContentString) {
-    // Creates a downloadable file with the updated data/writings.js + git commands
-    const commands = `# After saving, run these in your repo folder:
-# git add data/writings.js
-# git commit -m "Add new story via + button"
-# git push origin main
-# Then redeploy (GitHub Pages / Netlify) so everyone sees it.`;
-    const blob = new Blob([updatedContentString + "\n\n" + commands], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "writings-update-patch.txt";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    alert("Patch downloaded. Copy content to data/writings.js, then run git add/commit/push.");
-  }
-
-  function addWriting(writing) {
-    const custom = getCustomWritings();
-    custom.push(writing);
-    saveCustomWritings(custom);
-
-    // Save locally + generate manual patch + offer GitHub token publish
-    try {
-      const patchText = `/* Copy the following into data/writings.js after your existing WRITINGS array */\n/* Saved via + button at ${new Date().toISOString()} */\n// New writing: ${writing.title || 'untitled'} (id: ${writing.id || 'none'})\n// To make visible to everyone: paste above into WRITINGS = [ ... ]; then git commit/push.\n`;
-      generateGitPatch(patchText);
-    } catch (e) { /* silent fail */ }
-
-    // Safe path only: download patch + instructions (token never enters browser source)
-    try {
-      const patchText = `/* Copy into data/writings.js after WRITINGS array */\n/* Saved via + button at ${new Date().toISOString()} */\n// Title: ${writing.title || 'untitled'} | ID: ${writing.id || 'none'}\n// To publish to everyone: paste into data/writings.js, then run:\n// git add data/writings.js && git commit -m "add story" && git push origin main\n`;
-      generateGitPatch(patchText);
-    } catch (e) { /* silent fail */ }
-
-    // Remove from deletedIds if it was previously marked deleted
-    const deletedIds = getDeletedIds().filter(id => id !== writing.id);
-    localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
-    invalidateWritingsCache();
-
-    return writing;
-  }
-
-  function updateWriting(id, updatedData) {
-    const custom = getCustomWritings();
-    const index = custom.findIndex(w => w.id === id);
-    if (index !== -1) {
-      custom[index] = { ...custom[index], ...updatedData };
-      saveCustomWritings(custom);
-      invalidateWritingsCache();
-      return custom[index];
-    } else {
-      // It might be in base writings; copy to custom with updates
-      const baseWriting = (typeof WRITINGS !== 'undefined' && Array.isArray(WRITINGS)) ? WRITINGS.find(w => w.id === id) : null;
-      if (baseWriting) {
-        const newCustom = { ...baseWriting, ...updatedData };
-        custom.push(newCustom);
-        saveCustomWritings(custom);
-        return newCustom;
-      }
+  async function addWriting(writing) {
+    if (!writing.id) {
+      writing.id = slugify(writing.title || 'untitled') + '-' + Date.now();
     }
-    return null;
+
+    if (supabase) {
+      if (!currentAuthUid) {
+        await initSupabaseAuth();
+      }
+      const row = mapWorkToDb(writing, currentAuthUid);
+      const { error } = await supabase
+        .from('works')
+        .insert([row]);
+
+      if (error) {
+        console.error('Failed to publish to Supabase:', error);
+        alert('⚠️ Cloud Publish Note: ' + error.message + '\nSaving locally as backup.');
+        const custom = getCustomWritings();
+        custom.push(writing);
+        saveCustomWritings(custom);
+        return writing;
+      }
+
+      await loadSharedWorks();
+      return writing;
+    } else {
+      const custom = getCustomWritings();
+      custom.push(writing);
+      saveCustomWritings(custom);
+      return writing;
+    }
   }
 
-  function deleteWriting(id) {
+  async function updateWriting(id, updatedData) {
+    if (supabase) {
+      const dbPayload = {};
+      if (updatedData.title !== undefined) dbPayload.title = updatedData.title;
+      if (updatedData.author !== undefined) dbPayload.author = updatedData.author;
+      if (updatedData.type !== undefined) dbPayload.type = updatedData.type;
+      if (updatedData.date !== undefined) dbPayload.date = updatedData.date;
+      if (updatedData.excerpt !== undefined) dbPayload.excerpt = updatedData.excerpt;
+      if (updatedData.content !== undefined) dbPayload.content = updatedData.content;
+      if (updatedData.tags !== undefined) dbPayload.tags = updatedData.tags;
+      if (updatedData.marginalia !== undefined) dbPayload.marginalia = updatedData.marginalia;
+      if (updatedData.inResponseTo !== undefined) dbPayload.in_response_to = updatedData.inResponseTo;
+      if (updatedData.readingTime !== undefined) dbPayload.reading_time = updatedData.readingTime;
+      if (updatedData.featured !== undefined) dbPayload.featured = updatedData.featured;
+      if (updatedData.collection !== undefined) dbPayload.collection = updatedData.collection;
+      dbPayload.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('works')
+        .update(dbPayload)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase update failed:', error);
+        alert('Update failed: ' + error.message);
+        return null;
+      }
+
+      await loadSharedWorks();
+      return updatedData;
+    } else {
+      const custom = getCustomWritings();
+      const index = custom.findIndex(w => w.id === id);
+      if (index !== -1) {
+        custom[index] = { ...custom[index], ...updatedData };
+        saveCustomWritings(custom);
+        return custom[index];
+      }
+      return null;
+    }
+  }
+
+  async function deleteWriting(id) {
     const writings = getWritings();
     const writing = writings.find(w => w.id === id);
 
@@ -254,24 +351,55 @@
       return false;
     }
 
-    // 1. Mark in deleted list
-    const deletedIds = getDeletedIds();
-    if (!deletedIds.includes(id)) {
-      deletedIds.push(id);
-      localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+    if (supabase) {
+      const { error } = await supabase
+        .from('works')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase delete error:', error);
+        alert('Delete failed: ' + error.message);
+        return false;
+      }
+
+      await loadSharedWorks();
+      return true;
+    } else {
+      const deletedIds = getDeletedIds();
+      if (!deletedIds.includes(id)) {
+        deletedIds.push(id);
+        localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+      }
+      const custom = getCustomWritings().filter(w => w.id !== id);
+      saveCustomWritings(custom);
+      return true;
     }
+  }
 
-    // 2. Remove from custom local storage
-    const custom = getCustomWritings().filter(w => w.id !== id);
-    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(custom));
-    invalidateWritingsCache();
-
-    // 3. Remove from legacy storage
-    const legacy = (localStorage.getItem(STORAGE_KEY) ? JSON.parse(localStorage.getItem(STORAGE_KEY)) : []).filter(w => w.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
-    invalidateWritingsCache();
-
-    return true;
+  function setupRealtimeListener() {
+    if (!supabase) return;
+    try {
+      supabase
+        .channel('public:works')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'works' }, async () => {
+          await loadSharedWorks();
+          if (currentPage === 'archive') {
+            renderArchive();
+          } else if (currentPage === 'home') {
+            renderFeatured();
+          } else if (currentPage === 'reading' && currentReadingId) {
+            renderReading(currentReadingId);
+          } else if (currentPage === 'timeline') {
+            renderTimeline();
+          } else if (currentPage === 'stats') {
+            renderStats();
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn('Realtime subscription error:', e);
+    }
   }
 
   function exportData() {
@@ -2315,7 +2443,7 @@
     $('#modalOverlay')?.addEventListener('click', closeModal);
     $('#btnCancel')?.addEventListener('click', closeModal);
 
-    writingForm.addEventListener('submit', (e) => {
+    writingForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const isEditing = Boolean(editingIdInput.value);
@@ -2363,11 +2491,24 @@
         collection
       };
 
-      if (isEditing) {
-        updateWriting(editingIdInput.value, writingData);
-      } else {
-        addWriting(writingData);
-        localStorage.removeItem(DRAFT_KEY);
+      const btnSave = $('#btnSave');
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.textContent = isEditing ? 'Updating...' : 'Publishing to Cloud...';
+      }
+
+      try {
+        if (isEditing) {
+          await updateWriting(editingIdInput.value, writingData);
+        } else {
+          await addWriting(writingData);
+          localStorage.removeItem(DRAFT_KEY);
+        }
+      } finally {
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.textContent = 'Save Writing';
+        }
       }
 
       closeModal();
@@ -2432,11 +2573,13 @@
     });
 
     // Delete button on reading page
-    $('#btnDelete')?.addEventListener('click', () => {
+    $('#btnDelete')?.addEventListener('click', async () => {
       if (!currentReadingId) return;
       if (confirm('Are you sure you want to delete this writing? This cannot be undone.')) {
-        deleteWriting(currentReadingId);
-        navigateTo('archive');
+        const deleted = await deleteWriting(currentReadingId);
+        if (deleted) {
+          navigateTo('archive');
+        }
       }
     });
 
@@ -2654,7 +2797,7 @@
   }
 
   // ——— Initialize Application ———
-  function init() {
+  async function init() {
     initLockScreen();
     initLockButton();
     initUserBadge();
@@ -2675,6 +2818,11 @@
 
     const adminTools = $('#adminTools');
     if (adminTools) adminTools.hidden = true;
+
+    // Connect to Supabase Auth & Cloud Database
+    await initSupabaseAuth();
+    await loadSharedWorks();
+    setupRealtimeListener();
 
     renderFeatured();
     initQuoteOfDay();

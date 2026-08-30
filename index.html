@@ -748,7 +748,7 @@
             <input type="file" id="importFile" accept=".json" hidden>
           </div>
           <p style="font-size:0.85rem; color:#7A3B3E; margin-top:0.5rem;">
-            💡 <strong>New:</strong> When you add via <code>+</code>, a patch file downloads automatically. Copy it to <code>data/writings.js</code>, then run <code>git add . && git commit -m "add story" && git push</code> to make it visible to everyone.
+            ☁️ <strong>Live Cloud Sync:</strong> All writings are stored in your shared Supabase database. Stories published on any device are instantly visible to everyone in real-time.
           </p>
         </div>
 
@@ -1074,7 +1074,9 @@ Write freely just as you would in a journal.
 </div>
 <!-- End Main Content -->
 
-  <script src="data/writings.js?v=2.3"></script>
-  <script src="js/app.js?v=2.3"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="data/writings.js?v=2.4"></script>
+  <script src="js/app.js?v=2.4"></script>
 </body>
 </html>
