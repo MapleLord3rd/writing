@@ -23,10 +23,11 @@ function updateAchievementUI() {
   container.innerHTML = ACHIEVEMENTS.map(ac => {
     const unlocked = !!a[ac.id]?.unlocked;
     const progress = unlocked ? 'Unlocked' : (ac.easy ? 'Easy' : ac.medium ? 'Medium' : 'Hard');
-    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''}" data-id="${ac.id}">
-      <span class="achievement-icon">${unlocked ? '✦' : '◈'}</span>
-      <h4>${ac.name}</h4><p>${ac.desc}</p>
-      <div class="achievement-progress"><span>${progress}</span></div>
+    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''}" data-id="${ac.id}" aria-label="${ac.name}">
+      <div class="achievement-header"><span class="achievement-icon">${unlocked ? '✦' : '◈'}</span><h4>${ac.name}</h4></div>
+      <p class="achievement-desc">${ac.desc}</p>
+      <div class="achievement-bar-wrap"><div class="achievement-bar" style="width:${unlocked?100:0}%"></div></div>
+      <div class="achievement-meta"><span class="achievement-difficulty">${ac.easy?'Easy':ac.medium?'Medium':'Hard'}</span><span class="achievement-status">${unlocked?'Unlocked':'Locked'}</span></div>
     </div>`;
   }).join('');
 }
