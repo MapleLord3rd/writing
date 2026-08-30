@@ -4264,3 +4264,79 @@ input, select {
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* Profile Modal Layout Fixes */
+.profile-modal-content {
+  padding: 36px 28px 28px !important;
+  gap: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.profile-header {
+  text-align: center;
+  margin-bottom: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--gold-faint, rgba(184,151,106,0.25));
+}
+.profile-bio-wrapper {
+  margin: 6px 0 8px 0;
+  padding: 10px 0;
+}
+.profile-stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 10px !important;
+  margin: 8px 0 !important;
+  padding: 10px 0 !important;
+  border-top: 1px solid var(--gold-faint, rgba(184,151,106,0.25));
+  border-bottom: 1px solid var(--gold-faint, rgba(184,151,106,0.25));
+}
+.profile-stat-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 6px 0 !important;
+}
+.profile-divider {
+  text-align: center;
+  margin: 6px 0 !important;
+  padding: 6px 0 !important;
+  border-top: 1px solid var(--gold-faint, rgba(184,151,106,0.25));
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  color: var(--gold, #B8976A);
+}
+.profile-latest-works {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding-top: 4px !important;
+}
+.profile-work-link {
+  display: block !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--gold-faint, rgba(184,151,106,0.2)) !important;
+  border-radius: 10px !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.profile-work-link:hover {
+  background: var(--gold-faint, rgba(184,151,106,0.08)) !important;
+  border-color: var(--gold, #B8976A) !important;
+}
+.profile-work-title {
+  display: block !important;
+  font-family: var(--font-serif, 'Cormorant Garamond', serif);
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 2px !important;
+}
+.profile-work-meta {
+  display: block !important;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.75rem !important;
+  color: var(--text-muted, #777);
+}
