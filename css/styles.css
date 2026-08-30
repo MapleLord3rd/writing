@@ -3626,6 +3626,7 @@ input, select {
   }
   .quote-card {
     padding: var(--sp-lg);
+    transform: translateZ(0);
   }
   .quote-text {
     font-size: var(--fs-lg);
