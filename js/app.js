@@ -171,10 +171,35 @@
     invalidateWritingsCache();
   }
 
+  function generateGitPatch(updatedContentString) {
+    // Creates a downloadable file with the updated data/writings.js + git commands
+    const commands = `# After saving, run these in your repo folder:
+# git add data/writings.js
+# git commit -m "Add new story via + button"
+# git push origin main
+# Then redeploy (GitHub Pages / Netlify) so everyone sees it.`;
+    const blob = new Blob([updatedContentString + "\n\n" + commands], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "writings-update-patch.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert("Patch downloaded. Copy content to data/writings.js, then run git add/commit/push.");
+  }
+
   function addWriting(writing) {
     const custom = getCustomWritings();
     custom.push(writing);
     saveCustomWritings(custom);
+
+    // Generate a file showing updated content (manual copy to data/writings.js needed)
+    try {
+      const patchText = `/* Copy the following into data/writings.js after your existing WRITINGS array */\n/* Saved via + button at ${new Date().toISOString()} */\n// New writing: ${writing.title || 'untitled'} (id: ${writing.id || 'none'})\n// To make visible to everyone: paste above into WRITINGS = [ ... ]; then git commit/push.\n`;
+      generateGitPatch(patchText);
+    } catch (e) { /* silent fail */ }
 
     // Remove from deletedIds if it was previously marked deleted
     const deletedIds = getDeletedIds().filter(id => id !== writing.id);
