@@ -171,6 +171,14 @@
     invalidateWritingsCache();
   }
 
+  // IMPORTANT SECURITY NOTE: A browser cannot safely hold a GitHub token.
+  // The only safe way for '+ button → git push → visible everywhere' is a server/backend
+  // (Netlify Function / Vercel Edge / GitHub Actions). Token in browser = stolen by anyone.
+  // This function is left here for reference only; do NOT call with a real token in public HTML.
+  function commitToGitHub(fileContent, token) {
+    alert('SECURITY BLOCK: Do not enter your GitHub token in a public browser page. Use a server endpoint (e.g., Netlify Function) instead, or commit manually via git.');
+  }
+
   function generateGitPatch(updatedContentString) {
     // Creates a downloadable file with the updated data/writings.js + git commands
     const commands = `# After saving, run these in your repo folder:
@@ -195,9 +203,15 @@
     custom.push(writing);
     saveCustomWritings(custom);
 
-    // Generate a file showing updated content (manual copy to data/writings.js needed)
+    // Save locally + generate manual patch + offer GitHub token publish
     try {
       const patchText = `/* Copy the following into data/writings.js after your existing WRITINGS array */\n/* Saved via + button at ${new Date().toISOString()} */\n// New writing: ${writing.title || 'untitled'} (id: ${writing.id || 'none'})\n// To make visible to everyone: paste above into WRITINGS = [ ... ]; then git commit/push.\n`;
+      generateGitPatch(patchText);
+    } catch (e) { /* silent fail */ }
+
+    // Safe path only: download patch + instructions (token never enters browser source)
+    try {
+      const patchText = `/* Copy into data/writings.js after WRITINGS array */\n/* Saved via + button at ${new Date().toISOString()} */\n// Title: ${writing.title || 'untitled'} | ID: ${writing.id || 'none'}\n// To publish to everyone: paste into data/writings.js, then run:\n// git add data/writings.js && git commit -m "add story" && git push origin main\n`;
       generateGitPatch(patchText);
     } catch (e) { /* silent fail */ }
 
