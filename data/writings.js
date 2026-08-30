@@ -83,7 +83,7 @@ And someone who makes the world feel near.
 So here's to friendship, warm and true,
 To all the little things friends do—
 For happiness may come and go,
-But friendship gives it room to grow.`,
+But friendship gives it room to grow...`,
     tags: ['friendship', 'happiness', 'gratitude', 'life'],
     readingTime: '2 min read',
     featured: true,
