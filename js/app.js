@@ -271,74 +271,95 @@
       writing.id = slugify(writing.title || 'untitled') + '-' + Date.now();
     }
 
-    if (supabase) {
-      if (!currentAuthUid) {
-        await initSupabaseAuth();
-      }
-      const row = mapWorkToDb(writing, currentAuthUid);
-      const { error } = await supabase
-        .from('works')
-        .insert([row]);
-
-      if (error) {
-        console.error('Failed to publish to Supabase:', error);
-        alert('⚠️ Cloud Publish Note: ' + error.message + '\nSaving locally as backup.');
-        const custom = getCustomWritings();
-        custom.push(writing);
-        saveCustomWritings(custom);
-        return writing;
-      }
-
-      await loadSharedWorks();
-      return writing;
+    // 1. Always save locally as a responsive fallback
+    const custom = getCustomWritings();
+    const existingIdx = custom.findIndex(w => w.id === writing.id);
+    if (existingIdx !== -1) {
+      custom[existingIdx] = { ...custom[existingIdx], ...writing };
     } else {
-      const custom = getCustomWritings();
       custom.push(writing);
-      saveCustomWritings(custom);
-      return writing;
     }
+    saveCustomWritings(custom);
+
+    // Remove from deleted list if re-adding
+    const deletedIds = getDeletedIds().filter(id => id !== writing.id);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+    invalidateWritingsCache();
+
+    // 2. Upload to Supabase
+    if (supabase) {
+      try {
+        if (!currentAuthUid) {
+          await initSupabaseAuth();
+        }
+        const row = mapWorkToDb(writing, currentAuthUid);
+        const { error } = await supabase
+          .from('works')
+          .insert([row]);
+
+        if (error) {
+          console.warn('Supabase publish notice:', error.message);
+        } else {
+          await loadSharedWorks();
+        }
+      } catch (err) {
+        console.warn('Supabase publish error:', err);
+      }
+    }
+
+    return writing;
   }
 
   async function updateWriting(id, updatedData) {
-    if (supabase) {
-      const dbPayload = {};
-      if (updatedData.title !== undefined) dbPayload.title = updatedData.title;
-      if (updatedData.author !== undefined) dbPayload.author = updatedData.author;
-      if (updatedData.type !== undefined) dbPayload.type = updatedData.type;
-      if (updatedData.date !== undefined) dbPayload.date = updatedData.date;
-      if (updatedData.excerpt !== undefined) dbPayload.excerpt = updatedData.excerpt;
-      if (updatedData.content !== undefined) dbPayload.content = updatedData.content;
-      if (updatedData.tags !== undefined) dbPayload.tags = updatedData.tags;
-      if (updatedData.marginalia !== undefined) dbPayload.marginalia = updatedData.marginalia;
-      if (updatedData.inResponseTo !== undefined) dbPayload.in_response_to = updatedData.inResponseTo;
-      if (updatedData.readingTime !== undefined) dbPayload.reading_time = updatedData.readingTime;
-      if (updatedData.featured !== undefined) dbPayload.featured = updatedData.featured;
-      if (updatedData.collection !== undefined) dbPayload.collection = updatedData.collection;
-      dbPayload.updated_at = new Date().toISOString();
-
-      const { error } = await supabase
-        .from('works')
-        .update(dbPayload)
-        .eq('id', id);
-
-      if (error) {
-        console.error('Supabase update failed:', error);
-        alert('Update failed: ' + error.message);
-        return null;
-      }
-
-      await loadSharedWorks();
-      return updatedData;
+    // 1. Update local cache/storage
+    const custom = getCustomWritings();
+    const index = custom.findIndex(w => w.id === id);
+    if (index !== -1) {
+      custom[index] = { ...custom[index], ...updatedData };
+      saveCustomWritings(custom);
     } else {
-      const custom = getCustomWritings();
-      const index = custom.findIndex(w => w.id === id);
-      if (index !== -1) {
-        custom[index] = { ...custom[index], ...updatedData };
+      const baseWriting = (typeof WRITINGS !== 'undefined' && Array.isArray(WRITINGS)) ? WRITINGS.find(w => w.id === id) : null;
+      if (baseWriting) {
+        custom.push({ ...baseWriting, ...updatedData });
         saveCustomWritings(custom);
-        return custom[index];
       }
-      return null;
     }
+    invalidateWritingsCache();
+
+    // 2. Update Supabase
+    if (supabase) {
+      try {
+        const dbPayload = {};
+        if (updatedData.title !== undefined) dbPayload.title = updatedData.title;
+        if (updatedData.author !== undefined) dbPayload.author = updatedData.author;
+        if (updatedData.type !== undefined) dbPayload.type = updatedData.type;
+        if (updatedData.date !== undefined) dbPayload.date = updatedData.date;
+        if (updatedData.excerpt !== undefined) dbPayload.excerpt = updatedData.excerpt;
+        if (updatedData.content !== undefined) dbPayload.content = updatedData.content;
+        if (updatedData.tags !== undefined) dbPayload.tags = updatedData.tags;
+        if (updatedData.marginalia !== undefined) dbPayload.marginalia = updatedData.marginalia;
+        if (updatedData.inResponseTo !== undefined) dbPayload.in_response_to = updatedData.inResponseTo;
+        if (updatedData.readingTime !== undefined) dbPayload.reading_time = updatedData.readingTime;
+        if (updatedData.featured !== undefined) dbPayload.featured = updatedData.featured;
+        if (updatedData.collection !== undefined) dbPayload.collection = updatedData.collection;
+        dbPayload.updated_at = new Date().toISOString();
+
+        const { error } = await supabase
+          .from('works')
+          .update(dbPayload)
+          .eq('id', id);
+
+        if (error) {
+          console.warn('Supabase update notice:', error.message);
+        } else {
+          await loadSharedWorks();
+        }
+      } catch (err) {
+        console.warn('Supabase update error:', err);
+      }
+    }
+
+    return updatedData;
   }
 
   async function deleteWriting(id) {
@@ -351,30 +372,40 @@
       return false;
     }
 
-    if (supabase) {
-      const { error } = await supabase
-        .from('works')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Supabase delete error:', error);
-        alert('Delete failed: ' + error.message);
-        return false;
-      }
-
-      await loadSharedWorks();
-      return true;
-    } else {
-      const deletedIds = getDeletedIds();
-      if (!deletedIds.includes(id)) {
-        deletedIds.push(id);
-        localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
-      }
-      const custom = getCustomWritings().filter(w => w.id !== id);
-      saveCustomWritings(custom);
-      return true;
+    // 1. Mark in local deleted list & purge from local custom storage
+    const deletedIds = getDeletedIds();
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
     }
+    const custom = getCustomWritings().filter(w => w.id !== id);
+    saveCustomWritings(custom);
+
+    // Also remove from in-memory database cache
+    if (Array.isArray(_databaseWritings)) {
+      _databaseWritings = _databaseWritings.filter(w => w.id !== id);
+    }
+    invalidateWritingsCache();
+
+    // 2. Delete from Supabase
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('works')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          console.warn('Supabase delete notice:', error.message);
+        } else {
+          await loadSharedWorks();
+        }
+      } catch (err) {
+        console.warn('Supabase delete error:', err);
+      }
+    }
+
+    return true;
   }
 
   function setupRealtimeListener() {
