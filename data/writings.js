@@ -88,6 +88,29 @@ But friendship gives it room to grow...`,
     readingTime: '2 min read',
     featured: true,
     collection: 'personal'
+  },
+  {
+    id: 'our-first-story',
+    title: 'The Door in the Woods',
+    type: 'collaborative',
+    date: '2026-08-30',
+    author: 'neerav',
+    excerpt: '"The door slowly opened. Nobody expected what was waiting on the other side..."',
+    content: `Neerav:
+The door slowly opened with a quiet, hollow creak that echoed through the misty trees.
+
+Avigna:
+Nobody expected what was waiting on the other side—a room glowing with stardust and unfinished stories.
+
+Neerav:
+"Run."
+
+Avigna:
+And they did... straight into the adventure.`,
+    tags: ['collaborative', 'story', 'mystery', 'magic'],
+    readingTime: '1 min read',
+    featured: true,
+    collection: 'moments'
   }
 
   // ADD YOUR NEXT POEM HERE

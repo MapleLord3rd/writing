@@ -70,7 +70,7 @@
       nameEl.textContent = getAuthorDisplayName(user);
       badge.classList.toggle('user--avigna', isAvigna(user));
       badge.classList.toggle('user--friend', isAvigna(user));
-      badge.title = `Current Author: ${getAuthorDisplayName(user)} (Click to switch)`;
+      badge.title = `Profile: ${getAuthorDisplayName(user)} (Click to view profile)`;
     }
   }
 
@@ -79,20 +79,13 @@
     if (!badge) return;
 
     badge.addEventListener('click', () => {
-      const current = getCurrentUser();
-      const nextUser = current === 'neerav' ? 'avigna' : 'neerav';
-      setCurrentUser(nextUser);
-
-      // Update edit/delete buttons on reading view without destroying DOM or scroll position
-      if (currentPage === 'reading' && currentReadingId) {
-        updateReadingAuthorTools();
-      }
+      openProfileModal(getCurrentUser());
     });
 
     badge.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        badge.click();
+        openProfileModal(getCurrentUser());
       }
     });
   }
@@ -463,6 +456,29 @@
     reader.readAsText(file);
   }
 
+  // ——— Bookmarks (Read Later) & Comments & Profiles Storage Keys ———
+  const BOOKMARKS_KEY = 'archive-bookmarks-v1';
+  const COMMENTS_KEY = 'archive-comments-v1';
+  const PROFILES_KEY = 'archive-profiles-v1';
+
+  // ——— Toast Notification System ———
+  function showToast(message, icon = '✦') {
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.innerHTML = `<span>${icon}</span><span>${escapeHTML(message)}</span>`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(12px)';
+      toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => toast.remove(), 320);
+    }, 2800);
+  }
+
   // ——— Bookmarks & Favorites Shelf ———
   function getFavorites() {
     try {
@@ -482,11 +498,281 @@
     const isFav = favs.includes(id);
     if (isFav) {
       favs = favs.filter(f => f !== id);
+      showToast('Removed from favorites');
     } else {
       favs.push(id);
+      showToast('Added to favorites ⭐');
     }
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
     return !isFav;
+  }
+
+  // ——— Bookmarks (Read Later) ———
+  function getBookmarks() {
+    try {
+      const b = localStorage.getItem(BOOKMARKS_KEY);
+      return b ? JSON.parse(b) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function isBookmarked(id) {
+    return getBookmarks().includes(id);
+  }
+
+  function toggleBookmark(id) {
+    let list = getBookmarks();
+    const isSaved = list.includes(id);
+    if (isSaved) {
+      list = list.filter(b => b !== id);
+      showToast('Removed from Bookmarks');
+    } else {
+      list.push(id);
+      showToast('Saved to Bookmarks (Read Later) 🔖');
+    }
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list));
+    updateBookmarksCount();
+    return !isSaved;
+  }
+
+  function updateBookmarksCount() {
+    const countEl = document.getElementById('bookmarksCount');
+    if (countEl) {
+      countEl.textContent = getBookmarks().length;
+    }
+  }
+
+  // ——— Personal Profiles ———
+  const DEFAULT_BIOS = {
+    neerav: 'Just writing random stuff.',
+    avigna: 'In pursuit of words and quiet magic.'
+  };
+
+  function getProfile(author) {
+    const norm = isAvigna(author) ? 'avigna' : 'neerav';
+    try {
+      const saved = localStorage.getItem(PROFILES_KEY);
+      const data = saved ? JSON.parse(saved) : {};
+      return {
+        bio: data[norm]?.bio || DEFAULT_BIOS[norm]
+      };
+    } catch (e) {
+      return { bio: DEFAULT_BIOS[norm] };
+    }
+  }
+
+  function saveProfile(author, bioText) {
+    const norm = isAvigna(author) ? 'avigna' : 'neerav';
+    try {
+      const saved = localStorage.getItem(PROFILES_KEY);
+      const data = saved ? JSON.parse(saved) : {};
+      data[norm] = { bio: bioText };
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(data));
+      showToast('Profile bio updated! ✨');
+    } catch (e) {
+      console.error('Error saving profile:', e);
+    }
+  }
+
+  function openProfileModal(author) {
+    const norm = isAvigna(author) ? 'avigna' : 'neerav';
+    const profile = getProfile(norm);
+    const modal = document.getElementById('profileModal');
+    if (!modal) return;
+
+    const isCurrent = getCurrentUser() === norm;
+    const authorDisplayName = getAuthorDisplayName(norm);
+
+    const nameEl = document.getElementById('profileAuthorName');
+    const roleEl = document.getElementById('profileAuthorRole');
+    const letterEl = document.getElementById('profileAvatarLetter');
+    const quoteEl = document.getElementById('profileQuoteText');
+    const editBtn = document.getElementById('btnEditProfileBio');
+
+    if (nameEl) nameEl.textContent = authorDisplayName.toUpperCase();
+    if (roleEl) roleEl.textContent = isAvigna(norm) ? 'The Muse' : 'The Archivist';
+    if (letterEl) letterEl.textContent = isAvigna(norm) ? '✦' : 'N';
+    if (quoteEl) quoteEl.textContent = `“${profile.bio}”`;
+
+    if (editBtn) editBtn.style.display = isCurrent ? 'inline-flex' : 'none';
+
+    // Reset bio editing display
+    const bioDisplay = document.getElementById('profileBioDisplay');
+    const bioEditForm = document.getElementById('profileBioEditForm');
+    if (bioDisplay) bioDisplay.hidden = false;
+    if (bioEditForm) bioEditForm.hidden = true;
+
+    // Calculate dynamic stats
+    const writings = getWritings().filter(w => (isAvigna(norm) ? isAvigna(w.author) : !isAvigna(w.author)));
+    const totalWorks = writings.length;
+    const totalStories = writings.filter(w => w.type === 'story' || w.type === 'collaborative').length;
+    const totalPoems = writings.filter(w => w.type === 'poem').length;
+
+    const favorites = getFavorites();
+    const totalLikes = writings.reduce((acc, w) => acc + (favorites.includes(w.id) ? 1 : 0), 0);
+
+    const statWorks = document.getElementById('profileStatWorks');
+    const statStories = document.getElementById('profileStatStories');
+    const statPoems = document.getElementById('profileStatPoems');
+    const statLikes = document.getElementById('profileStatLikes');
+
+    if (statWorks) statWorks.textContent = totalWorks;
+    if (statStories) statStories.textContent = totalStories;
+    if (statPoems) statPoems.textContent = totalPoems;
+    if (statLikes) statLikes.textContent = totalLikes;
+
+    // Latest Works list
+    const latestContainer = document.getElementById('profileLatestWorks');
+    if (latestContainer) {
+      if (writings.length === 0) {
+        latestContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; font-family: var(--font-mono); padding: 12px 0;">No writings published yet.</p>';
+      } else {
+        const sorted = writings.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+        latestContainer.innerHTML = sorted.slice(0, 4).map(w => `
+          <a href="#" class="profile-work-link" data-work-id="${w.id}">
+            <span class="profile-work-title">“${escapeHTML(w.title)}”</span>
+            <span class="profile-work-meta">${formatDate(w.date)} · ${escapeHTML(w.type)}</span>
+          </a>
+        `).join('');
+
+        latestContainer.querySelectorAll('.profile-work-link').forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            modal.hidden = true;
+            navigateTo('reading', link.dataset.workId);
+          });
+        });
+      }
+    }
+
+    modal.hidden = false;
+  }
+
+  function initProfileModal() {
+    const modal = document.getElementById('profileModal');
+    const closeBtn = document.getElementById('profileModalClose');
+    const backdrop = document.getElementById('profileModalBackdrop');
+    const editBtn = document.getElementById('btnEditProfileBio');
+    const saveBtn = document.getElementById('btnSaveProfileBio');
+    const cancelBtn = document.getElementById('btnCancelProfileBio');
+    const bioInput = document.getElementById('profileBioInput');
+    const bioDisplay = document.getElementById('profileBioDisplay');
+    const bioEditForm = document.getElementById('profileBioEditForm');
+
+    if (!modal) return;
+
+    closeBtn?.addEventListener('click', () => modal.hidden = true);
+    backdrop?.addEventListener('click', () => modal.hidden = true);
+
+    editBtn?.addEventListener('click', () => {
+      const currentBio = getProfile(getCurrentUser()).bio;
+      if (bioInput) bioInput.value = currentBio;
+      if (bioDisplay) bioDisplay.hidden = true;
+      if (bioEditForm) bioEditForm.hidden = false;
+      setTimeout(() => bioInput?.focus(), 50);
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      if (bioDisplay) bioDisplay.hidden = false;
+      if (bioEditForm) bioEditForm.hidden = true;
+    });
+
+    saveBtn?.addEventListener('click', () => {
+      const newBio = bioInput ? bioInput.value.trim() : '';
+      if (newBio) {
+        saveProfile(getCurrentUser(), newBio);
+        const quoteEl = document.getElementById('profileQuoteText');
+        if (quoteEl) quoteEl.textContent = `“${newBio}”`;
+      }
+      if (bioDisplay) bioDisplay.hidden = false;
+      if (bioEditForm) bioEditForm.hidden = true;
+    });
+  }
+
+  // ——— Comments & Threaded Discussions ———
+  function getCommentsStore() {
+    try {
+      const saved = localStorage.getItem(COMMENTS_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function getWritingComments(writingId) {
+    const store = getCommentsStore();
+    return store[writingId] || [];
+  }
+
+  function addComment(writingId, text, parentId = null) {
+    if (!text || !text.trim()) return null;
+    const store = getCommentsStore();
+    if (!store[writingId]) store[writingId] = [];
+
+    const newComment = {
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      author: getCurrentUser(),
+      text: text.trim(),
+      timestamp: new Date().toISOString(),
+      parentId: parentId || null
+    };
+
+    store[writingId].push(newComment);
+    localStorage.setItem(COMMENTS_KEY, JSON.stringify(store));
+    showToast('Comment posted! 💬');
+    return newComment;
+  }
+
+  function deleteComment(writingId, commentId) {
+    const store = getCommentsStore();
+    if (!store[writingId]) return;
+
+    // Filter out target comment and all its nested children
+    const toDelete = new Set([commentId]);
+    let added = true;
+    while (added) {
+      added = false;
+      store[writingId].forEach(c => {
+        if (c.parentId && toDelete.has(c.parentId) && !toDelete.has(c.id)) {
+          toDelete.add(c.id);
+          added = true;
+        }
+      });
+    }
+
+    store[writingId] = store[writingId].filter(c => !toDelete.has(c.id));
+    localStorage.setItem(COMMENTS_KEY, JSON.stringify(store));
+    showToast('Comment deleted');
+  }
+
+  function formatRelativeTime(isoString) {
+    try {
+      const d = new Date(isoString);
+      const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSec < 45) return 'Just now';
+      if (diffSec < 3600) return `${Math.max(1, Math.floor(diffSec / 60))}m ago`;
+      if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+      if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return 'Recently';
+    }
+  }
+
+  // ——— Surprise Me Random Selector ———
+  function triggerSurpriseMe() {
+    const all = getWritings();
+    if (!all.length) {
+      showToast('No writings found in the archive.', '⚠️');
+      return;
+    }
+    const candidates = all.filter(w => w.id !== currentReadingId);
+    const pool = candidates.length ? candidates : all;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+
+    showToast(`Opening: “${picked.title}” ✨`, '🎲');
+    navigateTo('reading', picked.id);
   }
 
   // ——— DOM Cache ———
@@ -591,12 +877,14 @@
     currentAmbientType = 'off';
     const dot = $('#ambientStatusDot');
     const toggleBtn = $('#ambientToggleBtn');
+    const aura = $('#ambientAura');
     if (toggleBtn) toggleBtn.classList.remove('playing');
+    if (aura) aura.classList.remove('playing');
     if (dot) dot.style.opacity = '0';
     $$('.ambient-opt').forEach(opt => opt.classList.toggle('active', opt.dataset.sound === 'off'));
   }
 
-  function createNoiseBuffer(ctx, duration = 4, type = 'pink') {
+  function createNoiseBuffer(ctx, duration = 5, type = 'pink') {
     const bufferSize = ctx.sampleRate * duration;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -611,12 +899,12 @@
         b3 = 0.86650 * b3 + white * 0.3104856;
         b4 = 0.55000 * b4 + white * 0.5329522;
         b5 = -0.7616 * b5 - white * 0.0168980;
-        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.10;
         b6 = white * 0.115926;
       } else {
-        // Brown noise
-        b0 = (b0 + (0.02 * white)) / 1.02;
-        data[i] = b0 * 3.5;
+        // Brown noise - deep, warm, smooth
+        b0 = (b0 + (0.018 * white)) / 1.018;
+        data[i] = b0 * 2.8;
       }
     }
     return buffer;
@@ -632,102 +920,120 @@
     if (!ambientGainNode) {
       ambientGainNode = ctx.createGain();
       const volInput = $('#ambientVolume');
-      ambientGainNode.gain.setValueAtTime(volInput ? parseFloat(volInput.value) : 0.4, ctx.currentTime);
+      ambientGainNode.gain.setValueAtTime(volInput ? parseFloat(volInput.value) : 0.38, ctx.currentTime);
       ambientGainNode.connect(ctx.destination);
     }
 
     if (type === 'rain') {
-      // Gentle rainfall soundscape
-      const rainBuffer = createNoiseBuffer(ctx, 5, 'pink');
+      // Calming, gentle summer rainfall (soft warm lowpass, no harsh treble hiss)
+      const rainBuffer = createNoiseBuffer(ctx, 6, 'pink');
       const rainSource = ctx.createBufferSource();
       rainSource.buffer = rainBuffer;
       rainSource.loop = true;
 
       const rainFilter = ctx.createBiquadFilter();
       rainFilter.type = 'lowpass';
-      rainFilter.frequency.setValueAtTime(460, ctx.currentTime);
-      rainFilter.Q.setValueAtTime(1.4, ctx.currentTime);
+      rainFilter.frequency.setValueAtTime(320, ctx.currentTime);
+      rainFilter.Q.setValueAtTime(1.0, ctx.currentTime);
+
+      const highCut = ctx.createBiquadFilter();
+      highCut.type = 'highshelf';
+      highCut.frequency.setValueAtTime(2400, ctx.currentTime);
+      highCut.gain.setValueAtTime(-14, ctx.currentTime);
+
+      // Gentle slow wind shift across the rain
+      const rainLfo = ctx.createOscillator();
+      rainLfo.type = 'sine';
+      rainLfo.frequency.setValueAtTime(0.06, ctx.currentTime);
+      const rainLfoGain = ctx.createGain();
+      rainLfoGain.gain.setValueAtTime(80, ctx.currentTime);
+      rainLfo.connect(rainLfoGain);
+      rainLfoGain.connect(rainFilter.frequency);
 
       rainSource.connect(rainFilter);
-      rainFilter.connect(ambientGainNode);
+      rainFilter.connect(highCut);
+      highCut.connect(ambientGainNode);
       rainSource.start();
-      ambientSourceNodes.push(rainSource);
+      rainLfo.start();
+      ambientSourceNodes.push(rainSource, rainLfo);
 
     } else if (type === 'fire') {
-      // Cozy fireplace soundscape
-      const rumbleBuffer = createNoiseBuffer(ctx, 4, 'brown');
+      // Warm, cozy fireside hearth (deep soothing rumble + soft, gentle organic embers)
+      const rumbleBuffer = createNoiseBuffer(ctx, 6, 'brown');
       const rumbleSource = ctx.createBufferSource();
       rumbleSource.buffer = rumbleBuffer;
       rumbleSource.loop = true;
 
       const rumbleFilter = ctx.createBiquadFilter();
       rumbleFilter.type = 'lowpass';
-      rumbleFilter.frequency.setValueAtTime(220, ctx.currentTime);
+      rumbleFilter.frequency.setValueAtTime(110, ctx.currentTime);
+      rumbleFilter.Q.setValueAtTime(1.2, ctx.currentTime);
 
       rumbleSource.connect(rumbleFilter);
       rumbleFilter.connect(ambientGainNode);
       rumbleSource.start();
       ambientSourceNodes.push(rumbleSource);
 
-      // Random snapping crackle impulses
+      // Soft, tranquil ember crackles (spaced out, smooth cosine envelope, gentle volume)
       ambientInterval = setInterval(() => {
-        if (Math.random() > 0.45 && audioCtx && audioCtx.state === 'running') {
-          const crackleBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.04), ctx.sampleRate);
-          const crackleData = crackleBuffer.getChannelData(0);
-          for (let j = 0; j < crackleData.length; j++) {
-            crackleData[j] = (Math.random() * 2 - 1) * Math.exp(-j / (crackleData.length * 0.25));
+        if (Math.random() > 0.62 && audioCtx && audioCtx.state === 'running') {
+          const len = Math.floor(ctx.sampleRate * 0.035);
+          const crackleBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+          const data = crackleBuffer.getChannelData(0);
+          for (let j = 0; j < len; j++) {
+            const env = Math.sin((j / len) * Math.PI);
+            data[j] = (Math.random() * 2 - 1) * env * Math.exp(-j / (len * 0.4));
           }
           const crackleSource = ctx.createBufferSource();
           crackleSource.buffer = crackleBuffer;
 
           const crackleFilter = ctx.createBiquadFilter();
           crackleFilter.type = 'bandpass';
-          crackleFilter.frequency.setValueAtTime(1200 + Math.random() * 2400, ctx.currentTime);
-          crackleFilter.Q.setValueAtTime(2.5, ctx.currentTime);
+          crackleFilter.frequency.setValueAtTime(950 + Math.random() * 1100, ctx.currentTime);
+          crackleFilter.Q.setValueAtTime(2.0, ctx.currentTime);
 
           const crackleGain = ctx.createGain();
-          crackleGain.gain.setValueAtTime(0.3 + Math.random() * 0.4, ctx.currentTime);
+          crackleGain.gain.setValueAtTime(0.12 + Math.random() * 0.16, ctx.currentTime);
 
           crackleSource.connect(crackleFilter);
           crackleFilter.connect(crackleGain);
           crackleGain.connect(ambientGainNode);
           crackleSource.start();
         }
-      }, 160);
+      }, 550);
 
     } else if (type === 'waves') {
-      // Rhythmic ocean waves / tidal swell
-      const waveBuffer = createNoiseBuffer(ctx, 6, 'pink');
+      // Hypnotic ocean swell & deep tidal breath
+      const waveBuffer = createNoiseBuffer(ctx, 8, 'pink');
       const waveSource = ctx.createBufferSource();
       waveSource.buffer = waveBuffer;
       waveSource.loop = true;
 
       const waveFilter = ctx.createBiquadFilter();
       waveFilter.type = 'lowpass';
-      waveFilter.frequency.setValueAtTime(360, ctx.currentTime);
-      waveFilter.Q.setValueAtTime(1.8, ctx.currentTime);
+      waveFilter.frequency.setValueAtTime(280, ctx.currentTime);
+      waveFilter.Q.setValueAtTime(1.4, ctx.currentTime);
 
-      // LFO for filter cutoff oscillation
+      // Primary slow ocean tide LFO (~14s cycle)
       const waveLfo = ctx.createOscillator();
       waveLfo.type = 'sine';
-      waveLfo.frequency.setValueAtTime(0.11, ctx.currentTime); // ~9 second wave cycle
+      waveLfo.frequency.setValueAtTime(0.07, ctx.currentTime);
 
       const waveLfoGain = ctx.createGain();
-      waveLfoGain.gain.setValueAtTime(240, ctx.currentTime);
-
+      waveLfoGain.gain.setValueAtTime(180, ctx.currentTime);
       waveLfo.connect(waveLfoGain);
       waveLfoGain.connect(waveFilter.frequency);
 
-      // Swell gain oscillation
+      // Swell volume modulation
       const waveGain = ctx.createGain();
-      waveGain.gain.setValueAtTime(0.55, ctx.currentTime);
+      waveGain.gain.setValueAtTime(0.48, ctx.currentTime);
 
       const swellLfo = ctx.createOscillator();
       swellLfo.type = 'sine';
-      swellLfo.frequency.setValueAtTime(0.11, ctx.currentTime);
+      swellLfo.frequency.setValueAtTime(0.07, ctx.currentTime);
 
       const swellGain = ctx.createGain();
-      swellGain.gain.setValueAtTime(0.38, ctx.currentTime);
+      swellGain.gain.setValueAtTime(0.32, ctx.currentTime);
 
       swellLfo.connect(swellGain);
       swellGain.connect(waveGain.gain);
@@ -743,98 +1049,107 @@
       ambientSourceNodes.push(waveSource, waveLfo, swellLfo);
 
     } else if (type === 'breeze') {
-      // Calming forest breeze / swaying treetops
-      const breezeBuffer = createNoiseBuffer(ctx, 6, 'pink');
+      // Peaceful forest canopy & meditative harmonic wind chimes
+      const breezeBuffer = createNoiseBuffer(ctx, 8, 'pink');
       const breezeSource = ctx.createBufferSource();
       breezeSource.buffer = breezeBuffer;
       breezeSource.loop = true;
 
-      const breezeFilter1 = ctx.createBiquadFilter();
-      breezeFilter1.type = 'bandpass';
-      breezeFilter1.frequency.setValueAtTime(320, ctx.currentTime);
-      breezeFilter1.Q.setValueAtTime(1.8, ctx.currentTime);
+      const breezeFilter = ctx.createBiquadFilter();
+      breezeFilter.type = 'bandpass';
+      breezeFilter.frequency.setValueAtTime(260, ctx.currentTime);
+      breezeFilter.Q.setValueAtTime(1.2, ctx.currentTime);
 
-      const breezeFilter2 = ctx.createBiquadFilter();
-      breezeFilter2.type = 'bandpass';
-      breezeFilter2.frequency.setValueAtTime(680, ctx.currentTime);
-      breezeFilter2.Q.setValueAtTime(2.2, ctx.currentTime);
+      const breezeLfo = ctx.createOscillator();
+      breezeLfo.type = 'sine';
+      breezeLfo.frequency.setValueAtTime(0.05, ctx.currentTime);
 
-      // Gentle LFO modulating wind sweep
-      const breezeLfo1 = ctx.createOscillator();
-      breezeLfo1.type = 'sine';
-      breezeLfo1.frequency.setValueAtTime(0.08, ctx.currentTime);
+      const breezeLfoGain = ctx.createGain();
+      breezeLfoGain.gain.setValueAtTime(110, ctx.currentTime);
+      breezeLfo.connect(breezeLfoGain);
+      breezeLfoGain.connect(breezeFilter.frequency);
 
-      const breezeLfoGain1 = ctx.createGain();
-      breezeLfoGain1.gain.setValueAtTime(140, ctx.currentTime);
+      const breezeGain = ctx.createGain();
+      breezeGain.gain.setValueAtTime(0.65, ctx.currentTime);
 
-      breezeLfo1.connect(breezeLfoGain1);
-      breezeLfoGain1.connect(breezeFilter1.frequency);
-
-      const breezeGainNode = ctx.createGain();
-      breezeGainNode.gain.setValueAtTime(0.9, ctx.currentTime);
-
-      breezeSource.connect(breezeFilter1);
-      breezeFilter1.connect(breezeGainNode);
-
-      breezeSource.connect(breezeFilter2);
-      breezeFilter2.connect(breezeGainNode);
-
-      breezeGainNode.connect(ambientGainNode);
+      breezeSource.connect(breezeFilter);
+      breezeFilter.connect(breezeGain);
+      breezeGain.connect(ambientGainNode);
 
       breezeSource.start();
-      breezeLfo1.start();
+      breezeLfo.start();
+      ambientSourceNodes.push(breezeSource, breezeLfo);
 
-      ambientSourceNodes.push(breezeSource, breezeLfo1);
+      // Pentatonic wind chimes (serene, soft sine tones fading gently)
+      const chimePitches = [587.33, 659.25, 783.99, 880.00, 1046.50]; // D5, E5, G5, A5, C6
+      ambientInterval = setInterval(() => {
+        if (Math.random() > 0.45 && audioCtx && audioCtx.state === 'running') {
+          const freq = chimePitches[Math.floor(Math.random() * chimePitches.length)];
+          const chimeOsc = ctx.createOscillator();
+          chimeOsc.type = 'sine';
+          chimeOsc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+          const chimeGain = ctx.createGain();
+          const now = ctx.currentTime;
+          chimeGain.gain.setValueAtTime(0.0001, now);
+          chimeGain.gain.linearRampToValueAtTime(0.07, now + 0.04);
+          chimeGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+          chimeOsc.connect(chimeGain);
+          chimeGain.connect(ambientGainNode);
+
+          chimeOsc.start(now);
+          chimeOsc.stop(now + 2.9);
+        }
+      }, 2200);
 
     } else if (type === 'stream') {
-      // Gentle mountain stream / flowing water
-      const streamBuffer = createNoiseBuffer(ctx, 5, 'pink');
+      // Gentle mountain stream / clear spring water flowing over smooth stones
+      const streamBuffer = createNoiseBuffer(ctx, 6, 'pink');
       const streamSource = ctx.createBufferSource();
       streamSource.buffer = streamBuffer;
       streamSource.loop = true;
 
       const streamFilter1 = ctx.createBiquadFilter();
       streamFilter1.type = 'bandpass';
-      streamFilter1.frequency.setValueAtTime(480, ctx.currentTime);
-      streamFilter1.Q.setValueAtTime(3.2, ctx.currentTime);
+      streamFilter1.frequency.setValueAtTime(360, ctx.currentTime);
+      streamFilter1.Q.setValueAtTime(2.2, ctx.currentTime);
 
       const streamFilter2 = ctx.createBiquadFilter();
       streamFilter2.type = 'bandpass';
-      streamFilter2.frequency.setValueAtTime(1100, ctx.currentTime);
-      streamFilter2.Q.setValueAtTime(3.6, ctx.currentTime);
+      streamFilter2.frequency.setValueAtTime(780, ctx.currentTime);
+      streamFilter2.Q.setValueAtTime(2.8, ctx.currentTime);
 
-      // Micro ripple modulation
+      // Soft water ripple oscillation
       const rippleLfo = ctx.createOscillator();
       rippleLfo.type = 'sine';
-      rippleLfo.frequency.setValueAtTime(1.4, ctx.currentTime);
+      rippleLfo.frequency.setValueAtTime(0.7, ctx.currentTime);
 
       const rippleGain = ctx.createGain();
-      rippleGain.gain.setValueAtTime(60, ctx.currentTime);
-
+      rippleGain.gain.setValueAtTime(45, ctx.currentTime);
       rippleLfo.connect(rippleGain);
       rippleGain.connect(streamFilter2.frequency);
 
       const streamGain = ctx.createGain();
-      streamGain.gain.setValueAtTime(0.85, ctx.currentTime);
+      streamGain.gain.setValueAtTime(0.68, ctx.currentTime);
 
       streamSource.connect(streamFilter1);
       streamFilter1.connect(streamGain);
-
       streamSource.connect(streamFilter2);
       streamFilter2.connect(streamGain);
-
       streamGain.connect(ambientGainNode);
 
       streamSource.start();
       rippleLfo.start();
-
       ambientSourceNodes.push(streamSource, rippleLfo);
     }
 
     currentAmbientType = type;
     const toggleBtn = $('#ambientToggleBtn');
     const dot = $('#ambientStatusDot');
+    const aura = $('#ambientAura');
     if (toggleBtn) toggleBtn.classList.add('playing');
+    if (aura) aura.classList.add('playing');
     if (dot) dot.style.opacity = '1';
     $$('.ambient-opt').forEach(opt => opt.classList.toggle('active', opt.dataset.sound === type));
   }
@@ -845,19 +1160,40 @@
 
     const toggleBtn = $('#ambientToggleBtn');
     const popover = $('#ambientPopover');
+    const backdrop = $('#ambientBackdrop');
     const volumeSlider = $('#ambientVolume');
     const volumeLabel = $('#ambientVolLabel');
 
     if (!toggleBtn || !popover) return;
 
+    function openPopover() {
+      popover.hidden = false;
+      if (backdrop) backdrop.hidden = false;
+    }
+
+    function closePopover() {
+      popover.hidden = true;
+      if (backdrop) backdrop.hidden = true;
+    }
+
     toggleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      popover.hidden = !popover.hidden;
+      if (popover.hidden) {
+        openPopover();
+      } else {
+        closePopover();
+      }
     });
+
+    if (backdrop) {
+      backdrop.addEventListener('click', () => {
+        closePopover();
+      });
+    }
 
     document.addEventListener('click', (e) => {
       if (!popover.contains(e.target) && e.target !== toggleBtn) {
-        popover.hidden = true;
+        closePopover();
       }
     });
 
@@ -985,8 +1321,9 @@
     function draw() {
       if (isPaused) return;
       ctx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
-      const isDark = document.documentElement.dataset.theme === 'dark';
-      const color = isDark ? '232, 226, 214' : '44, 44, 44';
+      const theme = document.documentElement.dataset.theme || 'light';
+      const isMagical = theme === 'magical';
+      const isDark = theme === 'dark';
 
       for (const p of particles) {
         p.x += p.dx;
@@ -997,9 +1334,24 @@
         if (p.y > particlesCanvas.height) p.y = 0;
 
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color}, ${p.opacity})`;
+        ctx.arc(p.x, p.y, isMagical ? p.r * 1.25 : p.r, 0, Math.PI * 2);
+
+        if (isMagical) {
+          // Celestial stardust glow in magical mode
+          const palette = ['246, 211, 137', '232, 121, 249', '255, 255, 255', '196, 181, 253'];
+          const color = palette[Math.floor((p.x + p.y) % palette.length)];
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = `rgba(${color}, 0.7)`;
+          ctx.fillStyle = `rgba(${color}, ${Math.min(0.85, p.opacity * 1.8)})`;
+        } else {
+          ctx.shadowBlur = 0;
+          const color = isDark ? '232, 226, 214' : '44, 44, 44';
+          ctx.fillStyle = `rgba(${color}, ${p.opacity})`;
+        }
         ctx.fill();
+      }
+      if (isMagical) {
+        ctx.shadowBlur = 0;
       }
       animationFrameId = requestAnimationFrame(draw);
     }
@@ -1017,20 +1369,31 @@
     });
   }
 
-  // ——— Theme ———
+  // ——— Theme (Light / Dark / Magical) ———
   function initTheme() {
     const saved = localStorage.getItem('archive-theme');
-    if (saved) {
+    if (saved && ['light', 'dark', 'magical'].includes(saved)) {
       document.documentElement.dataset.theme = saved;
     } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       document.documentElement.dataset.theme = 'dark';
     }
-    themeToggle.addEventListener('click', () => {
-      const current = document.documentElement.dataset.theme;
-      const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem('archive-theme', next);
-    });
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const current = document.documentElement.dataset.theme || 'light';
+        let next = 'dark';
+        if (current === 'light') {
+          next = 'dark';
+        } else if (current === 'dark') {
+          next = 'magical';
+        } else {
+          next = 'light';
+        }
+
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('archive-theme', next);
+      });
+    }
   }
 
   // ——— Navigation ———
@@ -1068,6 +1431,10 @@
       navToggle.classList.toggle('open');
       navLinks.classList.toggle('open');
       navToggle.setAttribute('aria-expanded', navToggle.classList.contains('open'));
+    });
+
+    $('#btnNavSurprise')?.addEventListener('click', () => {
+      triggerSurpriseMe();
     });
 
     document.addEventListener('click', (e) => {
@@ -1173,15 +1540,32 @@
       : '';
 
     const isFav = isFavorite(writing.id);
+    const isSaved = isBookmarked(writing.id);
     const bookmarkBtnHtml = `
-      <button class="card-bookmark-btn ${isFav ? 'favorited' : ''}" data-favorite-id="${writing.id}" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}" aria-label="Favorite">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>
-      </button>
+      <div class="card-action-btns">
+        <button class="card-bookmark-later-btn ${isSaved ? 'bookmarked' : ''}" data-bookmark-id="${writing.id}" title="${isSaved ? 'Remove from Bookmarks (Read Later)' : 'Save to Bookmarks (Read Later)'}" aria-label="Bookmark for later">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </button>
+        <button class="card-bookmark-btn ${isFav ? 'favorited' : ''}" data-favorite-id="${writing.id}" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}" aria-label="Favorite">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </button>
+      </div>
     `;
 
     card.innerHTML = `
+      <div class="card-curtain-wrapper" aria-hidden="true">
+        <div class="card-curtain-left"></div>
+        <div class="card-curtain-right"></div>
+        <div class="card-curtain-seal">
+          <span class="curtain-seal-icon">✦</span>
+          <span class="curtain-seal-label">Reveal Poem</span>
+          <span class="curtain-seal-sparkle">✨</span>
+        </div>
+      </div>
       ${bookmarkBtnHtml}
       <div class="card-meta">
         <span class="card-type">${escapeHTML(writing.type)}</span>
@@ -1200,6 +1584,21 @@
     `;
 
     card.addEventListener('click', (e) => {
+      // Bookmark Read Later click
+      const bkmkBtn = e.target.closest('.card-bookmark-later-btn');
+      if (bkmkBtn) {
+        e.stopPropagation();
+        const id = bkmkBtn.dataset.bookmarkId;
+        const nowSaved = toggleBookmark(id);
+        bkmkBtn.classList.toggle('bookmarked', nowSaved);
+        bkmkBtn.querySelector('svg').setAttribute('fill', nowSaved ? 'currentColor' : 'none');
+        bkmkBtn.title = nowSaved ? 'Remove from Bookmarks (Read Later)' : 'Save to Bookmarks (Read Later)';
+        if (currentFilter === 'bookmarks') {
+          renderArchive();
+        }
+        return;
+      }
+
       // Favorite click
       const favBtn = e.target.closest('.card-bookmark-btn');
       if (favBtn) {
@@ -1255,10 +1654,15 @@
       results = results.filter(w => (w.author || 'neerav') === currentAuthorFilter);
     }
 
-    // Type filter / Favorites filter
+    // Type filter / Favorites filter / Bookmarks / Collaborative
     if (currentFilter === 'favorites') {
       const favs = getFavorites();
       results = results.filter(w => favs.includes(w.id));
+    } else if (currentFilter === 'bookmarks') {
+      const bkmks = getBookmarks();
+      results = results.filter(w => bkmks.includes(w.id));
+    } else if (currentFilter === 'collaborative') {
+      results = results.filter(w => w.type === 'collaborative' || w.inCollaboration);
     } else if (currentFilter !== 'all') {
       results = results.filter(w => w.type === currentFilter);
     }
@@ -1355,6 +1759,8 @@
       renderArchive();
     });
 
+    $('#btnArchiveSurprise')?.addEventListener('click', triggerSurpriseMe);
+
     let _searchDebounce;
     searchInput.addEventListener('input', (e) => {
       const value = e.target.value.trim();
@@ -1440,7 +1846,17 @@
       if (textSpan) textSpan.textContent = isFav ? 'Favorited' : 'Favorite';
     }
 
+    // Update read later button state
+    const btnReadLater = $('#btnReadLaterReading');
+    if (btnReadLater) {
+      const isSaved = isBookmarked(writing.id);
+      btnReadLater.classList.toggle('bookmarked', isSaved);
+      const textSpan = btnReadLater.querySelector('.admin-btn-text');
+      if (textSpan) textSpan.textContent = isSaved ? 'Bookmarked' : 'Bookmark';
+    }
+
     const isPoem = writing.type === 'poem';
+    const isCollab = writing.type === 'collaborative';
     const sortedWritings = allWritings.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
     const currentIndex = sortedWritings.findIndex(w => w.id === writingId);
     const prevWork = currentIndex < sortedWritings.length - 1 ? sortedWritings[currentIndex + 1] : null;
@@ -1448,7 +1864,63 @@
 
     // Format content
     let bodyHtml;
-    if (isPoem) {
+    let collabPassThePenHtml = '';
+
+    if (isCollab) {
+      const rawBlocks = (writing.content || '').trim().split(/\n\n+/);
+      const turns = [];
+
+      rawBlocks.forEach(block => {
+        const trimmed = block.trim();
+        const match = trimmed.match(/^(neerav|avigna|the archivist|the muse):\s*([\s\S]*)$/i);
+        if (match) {
+          const authorKey = match[1].toLowerCase();
+          const author = isAvigna(authorKey) ? 'avigna' : 'neerav';
+          turns.push({ author, text: match[2].trim() });
+        } else {
+          turns.push({ author: writing.author || 'neerav', text: trimmed });
+        }
+      });
+
+      const turnsRendered = turns.map(t => {
+        const isAv = isAvigna(t.author);
+        const name = getAuthorDisplayName(t.author);
+        const letter = isAv ? '✦' : 'N';
+        const modifierClass = isAv ? 'collab-turn-block--avigna' : 'collab-turn-block--neerav';
+        return `
+          <div class="collab-turn-block ${modifierClass}">
+            <div class="collab-turn-header">
+              <div class="collab-turn-avatar">${letter}</div>
+              <span class="collab-turn-author">${name}</span>
+            </div>
+            <div class="collab-turn-text">${escapeHTML(t.text)}</div>
+          </div>
+        `;
+      }).join('');
+
+      bodyHtml = `
+        <div class="collab-story-container">
+          <div class="collab-story-turns">${turnsRendered}</div>
+        </div>
+      `;
+
+      const currentAuthorName = getAuthorDisplayName(getCurrentUser());
+      collabPassThePenHtml = `
+        <div class="pass-the-pen-box" id="passThePenBox">
+          <div class="pass-the-pen-header">
+            <span class="pass-the-pen-icon">✒</span>
+            <h3 class="pass-the-pen-title">Pass the Pen — Add Next Turn</h3>
+          </div>
+          <p class="pass-the-pen-subtitle">You are writing as <strong>${escapeHTML(currentAuthorName)}</strong></p>
+          <textarea id="passThePenInput" class="comment-input" style="min-height: 85px;" placeholder="Write what happens next in the story..."></textarea>
+          <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+            <button type="button" class="btn-primary" id="btnSubmitTurn" style="font-size: 0.85rem; padding: 8px 18px;">
+              <span>Append Turn</span> <span>&rarr;</span>
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (isPoem) {
       const stanzas = (writing.content || '').trim().split(/\n\n+/);
       bodyHtml = stanzas.map(s =>
         `<div class="poem-stanza">${escapeHTML(s)}</div>`
@@ -1520,12 +1992,12 @@
     const authorName = getAuthorDisplayName(writing.author);
     const sealClass = isAvigna(writing.author) ? 'wax-seal--avigna' : 'wax-seal--neerav';
     const sealEmblem = isAvigna(writing.author) ? '✦' : 'N';
-    const sealSignature = isAvigna(writing.author)
-      ? 'Written with heart by Avigna'
-      : 'Written with care by Neerav';
-    const sealSubtitle = isAvigna(writing.author)
-      ? 'The Muse · The Archive'
-      : 'The Archivist · The Archive';
+    const sealSignature = isCollab
+      ? 'Written together by Neerav & Avigna'
+      : (isAvigna(writing.author) ? 'Written with heart by Avigna' : 'Written with care by Neerav');
+    const sealSubtitle = isCollab
+      ? 'A Collaborative Creation · The Archive'
+      : (isAvigna(writing.author) ? 'The Muse · The Archive' : 'The Archivist · The Archive');
 
     const authorSealHtml = `
       <div class="author-seal-wrapper">
@@ -1534,6 +2006,80 @@
         </div>
         <span class="author-seal-signature">${sealSignature}</span>
         <span class="author-seal-subtitle">${sealSubtitle}</span>
+      </div>
+    `;
+
+    // Comments Section Builder
+    const comments = getWritingComments(writingId);
+    const topLevelComments = comments.filter(c => !c.parentId);
+
+    function renderCommentThread(c, isReply = false) {
+      const isAv = isAvigna(c.author);
+      const authorDisplayName = getAuthorDisplayName(c.author);
+      const avatarLetter = isAv ? '✦' : 'N';
+      const authorBadgeClass = isAv ? 'comment-author-badge--avigna' : 'comment-author-badge--neerav';
+      const timeStr = formatRelativeTime(c.timestamp);
+      const isOwnComment = getCurrentUser() === (isAv ? 'avigna' : 'neerav');
+      const childReplies = comments.filter(r => r.parentId === c.id);
+
+      return `
+        <div class="comment-item ${isReply ? 'comment-item--reply' : ''}" id="comment-${c.id}" data-comment-id="${c.id}">
+          <div class="comment-item-header">
+            <div class="comment-author-info">
+              <span class="comment-author-avatar ${isAv ? 'user--avigna' : ''}">${avatarLetter}</span>
+              <span class="comment-author-badge ${authorBadgeClass}">${escapeHTML(authorDisplayName)}</span>
+              <span class="comment-timestamp">${escapeHTML(timeStr)}</span>
+            </div>
+            <div class="comment-actions">
+              ${!isReply ? `<button type="button" class="comment-action-btn btn-reply" data-reply-id="${c.id}">↩ Reply</button>` : ''}
+              ${isOwnComment ? `<button type="button" class="comment-action-btn btn-delete-comment" data-delete-comment-id="${c.id}" title="Delete comment">✕ Delete</button>` : ''}
+            </div>
+          </div>
+          <div class="comment-text">${escapeHTML(c.text)}</div>
+
+          ${!isReply ? `
+            <div class="comment-reply-form" id="replyForm-${c.id}" hidden>
+              <textarea class="comment-input reply-input" rows="2" placeholder="Reply to ${escapeHTML(authorDisplayName)}..."></textarea>
+              <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                <button type="button" class="btn-secondary btn-cancel-reply" data-cancel-reply-id="${c.id}" style="font-size: 0.8rem; padding: 5px 12px;">Cancel</button>
+                <button type="button" class="btn-primary btn-submit-reply" data-submit-reply-id="${c.id}" style="font-size: 0.8rem; padding: 5px 14px;">Post Reply</button>
+              </div>
+            </div>
+          ` : ''}
+
+          ${childReplies.length > 0 ? `
+            <div class="comment-replies-list">
+              ${childReplies.map(r => renderCommentThread(r, true)).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    const commentsListHtml = topLevelComments.length > 0
+      ? topLevelComments.map(c => renderCommentThread(c)).join('')
+      : `<p class="comments-empty-text" id="commentsEmpty">No reflections yet. Be the first to leave a thought.</p>`;
+
+    const currentLoggedInAuthorName = getAuthorDisplayName(getCurrentUser());
+    const commentsSectionHtml = `
+      <div class="reading-comments-section" id="readingCommentsSection">
+        <div class="comments-header">
+          <h2 class="comments-title"><span>💬</span> Comments (${comments.length})</h2>
+        </div>
+
+        <div class="comment-form-wrapper">
+          <div class="comment-form-author">
+            <span>Writing comment as <strong>${escapeHTML(currentLoggedInAuthorName)}</strong></span>
+          </div>
+          <textarea id="newCommentInput" class="comment-input" rows="2" placeholder="Leave a reflection, note, or reaction..."></textarea>
+          <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+            <button type="button" class="btn-primary" id="btnPostComment" style="font-size: 0.85rem; padding: 8px 18px;">Post Comment</button>
+          </div>
+        </div>
+
+        <div class="comments-list" id="commentsList">
+          ${commentsListHtml}
+        </div>
       </div>
     `;
 
@@ -1597,9 +2143,12 @@
         ${bodyHtml}
       </div>
 
+      ${collabPassThePenHtml}
       ${marginaliaHtml}
       ${authorSealHtml}
       ${responsesHtml}
+
+      ${commentsSectionHtml}
 
       <div class="reading-footer">
         <div class="reading-tags">${tagsHtml}</div>
@@ -1620,6 +2169,95 @@
 
     // Apply active reader preferences
     applyReaderPrefs();
+
+    // Pass the Pen submit handler
+    const btnSubmitTurn = $('#btnSubmitTurn');
+    const passThePenInput = $('#passThePenInput');
+    if (btnSubmitTurn && passThePenInput) {
+      btnSubmitTurn.addEventListener('click', async () => {
+        const turnText = passThePenInput.value.trim();
+        if (!turnText) {
+          passThePenInput.focus();
+          return;
+        }
+        const activeWriting = getWritings().find(w => w.id === writingId);
+        if (!activeWriting) return;
+
+        const turnAuthorName = getAuthorDisplayName(getCurrentUser());
+        const updatedContent = `${(activeWriting.content || '').trim()}\n\n${turnAuthorName}:\n${turnText}`;
+
+        btnSubmitTurn.disabled = true;
+        try {
+          await updateWriting(writingId, { ...activeWriting, content: updatedContent });
+          showToast('Added your turn to the story! ✒️');
+          renderReading(writingId);
+        } catch (e) {
+          console.error('Error submitting collaborative turn:', e);
+        }
+      });
+    }
+
+    // Comment submit handler
+    const btnPostComment = $('#btnPostComment');
+    const newCommentInput = $('#newCommentInput');
+    if (btnPostComment && newCommentInput) {
+      btnPostComment.addEventListener('click', () => {
+        const text = newCommentInput.value.trim();
+        if (!text) {
+          newCommentInput.focus();
+          return;
+        }
+        addComment(writingId, text);
+        renderReading(writingId);
+      });
+    }
+
+    // Reply and Delete button handlers
+    readingContent.querySelectorAll('.btn-reply').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const commentId = btn.dataset.replyId;
+        const form = readingContent.querySelector(`#replyForm-${commentId}`);
+        if (form) {
+          form.hidden = !form.hidden;
+          if (!form.hidden) {
+            form.querySelector('.reply-input')?.focus();
+          }
+        }
+      });
+    });
+
+    readingContent.querySelectorAll('.btn-cancel-reply').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const commentId = btn.dataset.cancelReplyId;
+        const form = readingContent.querySelector(`#replyForm-${commentId}`);
+        if (form) form.hidden = true;
+      });
+    });
+
+    readingContent.querySelectorAll('.btn-submit-reply').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const commentId = btn.dataset.submitReplyId;
+        const form = readingContent.querySelector(`#replyForm-${commentId}`);
+        const input = form?.querySelector('.reply-input');
+        const text = input ? input.value.trim() : '';
+        if (!text) {
+          input?.focus();
+          return;
+        }
+        addComment(writingId, text, commentId);
+        renderReading(writingId);
+      });
+    });
+
+    readingContent.querySelectorAll('.btn-delete-comment').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const commentId = btn.dataset.deleteCommentId;
+        if (confirm('Delete this comment?')) {
+          deleteComment(writingId, commentId);
+          renderReading(writingId);
+        }
+      });
+    });
 
     // Marginalia toggle handler
     const btnMarginalia = $('#btnToggleMarginalia');
@@ -2550,6 +3188,18 @@
       }
     });
 
+    // Read later / Bookmark button on reading view
+    $('#btnReadLaterReading')?.addEventListener('click', () => {
+      if (!currentReadingId) return;
+      const nowSaved = toggleBookmark(currentReadingId);
+      const btn = $('#btnReadLaterReading');
+      if (btn) {
+        btn.classList.toggle('bookmarked', nowSaved);
+        const textSpan = btn.querySelector('.admin-btn-text');
+        if (textSpan) textSpan.textContent = nowSaved ? 'Bookmarked' : 'Bookmark';
+      }
+    });
+
     // Favorite button on reading view
     $('#btnBookmarkReading')?.addEventListener('click', () => {
       if (!currentReadingId) return;
@@ -2828,6 +3478,8 @@
     initLockButton();
     initUserBadge();
     updateUserBadge();
+    initProfileModal();
+    updateBookmarksCount();
     initTheme();
     initNav();
     initArchiveControls();

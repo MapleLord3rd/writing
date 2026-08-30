@@ -44,6 +44,12 @@
   <!-- Grain overlay -->
   <div class="grain-overlay" aria-hidden="true"></div>
 
+  <!-- Ambient Sound Aura -->
+  <div class="ambient-aura" id="ambientAura" aria-hidden="true"></div>
+
+  <!-- Ambient Backdrop Overlay -->
+  <div class="ambient-backdrop" id="ambientBackdrop" hidden></div>
+
   <!-- Floating particles -->
   <canvas id="particles" aria-hidden="true"></canvas>
 
@@ -92,16 +98,24 @@
             </div>
           </div>
         </div>
-        <div class="user-profile-badge" id="navUserBadge" title="Click to switch author profile" role="button" tabindex="0">
+        <button class="nav-surprise-btn" id="btnNavSurprise" title="Surprise Me — Open a random work" aria-label="Surprise Me">
+          <span class="nav-surprise-icon">🎲</span>
+          <span class="nav-surprise-text">Surprise Me</span>
+        </button>
+        <div class="user-profile-badge" id="navUserBadge" title="View Personal Profile" role="button" tabindex="0">
           <span class="user-profile-dot" id="userProfileDot"></span>
           <span class="user-profile-name" id="userProfileName">Neerav</span>
         </div>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <button class="theme-toggle" id="themeToggle" title="Theme Mode: Light / Dark / Magical" aria-label="Toggle theme mode">
           <svg class="theme-icon theme-icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
           <svg class="theme-icon theme-icon--moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="theme-icon theme-icon--magic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M15 4V2m0 16v-2m8-7h-2M4 11H2m15.5 5.5l-1.5-1.5M6 6L4.5 4.5m0 13L6 16m11.5-11.5L16 6"/>
+            <path d="m3 21 9-9m3-3 2-2a2.828 2.828 0 1 0-4-4l-2 2"/>
           </svg>
         </button>
         <button class="theme-toggle" id="lockArchiveBtn" title="Lock the Archive" aria-label="Lock archive">
@@ -233,6 +247,8 @@
         <div class="archive-filters" role="tablist" aria-label="Filter by type">
           <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">All</button>
           <button class="filter-btn" data-filter="favorites" role="tab" aria-selected="false">✦ Favorites</button>
+          <button class="filter-btn" data-filter="bookmarks" role="tab" aria-selected="false">🔖 Bookmarks (<span id="bookmarksCount">0</span>)</button>
+          <button class="filter-btn" data-filter="collaborative" role="tab" aria-selected="false">🤝 Collaborative</button>
           <button class="filter-btn" data-filter="poem" role="tab" aria-selected="false">Poems</button>
           <button class="filter-btn" data-filter="story" role="tab" aria-selected="false">Stories</button>
           <button class="filter-btn" data-filter="article" role="tab" aria-selected="false">Articles</button>
@@ -246,6 +262,10 @@
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </div>
+        <button type="button" class="surprise-filter-btn" id="btnArchiveSurprise" title="Open a random writing">
+          <span>🎲</span>
+          <span>Surprise Me</span>
+        </button>
         <div class="archive-sort">
           <label for="sortSelect" class="sr-only">Sort writings</label>
           <select id="sortSelect" class="sort-select">
@@ -369,6 +389,7 @@
       <!-- Features Category Tabs -->
       <div class="features-categories" role="tablist" aria-label="Filter features by category">
         <button class="feature-category-btn active" data-feature-cat="all" role="tab" aria-selected="true">All Features</button>
+        <button class="feature-category-btn" data-feature-cat="magic" role="tab" aria-selected="false">✨ Magical Mode</button>
         <button class="feature-category-btn" data-feature-cat="audio" role="tab" aria-selected="false">🎧 Ambient Audio</button>
         <button class="feature-category-btn" data-feature-cat="reading" role="tab" aria-selected="false">📖 Reading Tools</button>
         <button class="feature-category-btn" data-feature-cat="export" role="tab" aria-selected="false">🎨 Postcards & Export</button>
@@ -378,6 +399,35 @@
 
       <!-- Features Grid -->
       <div class="features-grid">
+
+        <!-- 0. Magical Mode & Curtain Reveal -->
+        <article class="feature-card" data-category="magic">
+          <div class="feature-card-header">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">✨</span>
+            </div>
+            <div class="feature-meta">
+              <span class="feature-category-tag">Enchanted Experience</span>
+              <h3 class="feature-title">Magical Mode &amp; Velvet Curtain Reveal</h3>
+            </div>
+          </div>
+          <p class="feature-desc">
+            Transform The Archive into an ethereal, cosmic wonderland with twilight starlight backgrounds, luminous golden particles, and luxurious velvet curtains over every writing card that smoothly part when you hover over them.
+          </p>
+          <div class="feature-instructions">
+            <h4 class="instructions-heading">How to Use:</h4>
+            <ol class="instructions-list">
+              <li><span class="step-num">1</span> Click the <strong>Theme Toggle button</strong> in the top navigation bar to cycle to <strong class="guide-tag">✨ Magical Mode</strong>.</li>
+              <li><span class="step-num">2</span> Watch the background transform into a celestial starfield with shimmering stardust particles.</li>
+              <li><span class="step-num">3</span> <strong>Velvet Curtains:</strong> Browse the Home or Archive page — each card is draped with a velvet curtain and glowing seal.</li>
+              <li><span class="step-num">4</span> Hover your cursor over any card (or tap on mobile) to watch the curtains glide open with a golden starlight burst!</li>
+            </ol>
+          </div>
+          <div class="feature-card-footer">
+            <button type="button" class="feature-action-btn" id="btnGuideToggleMagic">✨ Switch to Magical Mode</button>
+            <a href="#" class="feature-action-btn link-action" data-nav="archive">Explore Archive Curtains &rarr;</a>
+          </div>
+        </article>
 
         <!-- 1. Ambient Soundscapes -->
         <article class="feature-card" data-category="audio">
@@ -678,7 +728,7 @@
           <div class="feature-instructions">
             <h4 class="instructions-heading">How to Use:</h4>
             <ol class="instructions-list">
-              <li><span class="step-num">1</span> <strong>Passphrases:</strong> Unlock as Neerav using <span class="kbd-badge">friendship</span> or as Avigna using <span class="kbd-badge">terrible judgement</span>.</li>
+              <li><span class="step-num">1</span> <strong>Passphrases:</strong> Enter your personal secret passphrase to unlock the archive under your author identity (Neerav or Avigna).</li>
               <li><span class="step-num">2</span> <strong>Quick Lock:</strong> Click the <strong>Padlock icon</strong> in the top navigation bar anytime to immediately lock the archive and clear your session.</li>
               <li><span class="step-num">3</span> <strong>Backup &amp; Restore:</strong> Go to the <strong>About</strong> page to export or import your entire archive as a single <span class="kbd-badge">.json</span> file.</li>
             </ol>
@@ -824,6 +874,7 @@
               <select id="formType" class="form-input" required>
                 <option value="poem">Poem</option>
                 <option value="story">Story</option>
+                <option value="collaborative">Collaborative Story (Pass-the-Pen)</option>
                 <option value="article">Article</option>
                 <option value="essay">Essay</option>
                 <option value="note">Note</option>
@@ -940,7 +991,13 @@ Write freely just as you would in a journal.
 
   <!-- Admin Tools (in reading page) -->
   <div class="admin-tools" id="adminTools" hidden>
-    <button class="admin-tool-btn" id="btnBookmarkReading" title="Bookmark / Favorite this writing">
+    <button class="admin-tool-btn" id="btnReadLaterReading" title="Save for Later / Bookmark">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span class="admin-btn-text">Bookmark</span>
+    </button>
+    <button class="admin-tool-btn" id="btnBookmarkReading" title="Favorite this writing">
       <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
       </svg>
@@ -1056,6 +1113,79 @@ Write freely just as you would in a journal.
             <button type="button" class="btn-secondary" id="btnCopyPostcard">Copy Image</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Profile Modal -->
+  <div class="modal profile-modal" id="profileModal" hidden role="dialog" aria-modal="true" aria-labelledby="profileAuthorName">
+    <div class="modal-overlay" id="profileModalBackdrop"></div>
+    <div class="modal-content profile-modal-content">
+      <div class="modal-header" style="position: absolute; top: 12px; right: 12px; z-index: 10; border: none; padding: 0;">
+        <button class="modal-close" id="profileModalClose" aria-label="Close profile">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar">
+          <span class="profile-avatar-letter" id="profileAvatarLetter">N</span>
+        </div>
+        <h2 class="profile-name" id="profileAuthorName">NEERAV</h2>
+        <p class="profile-role" id="profileAuthorRole">The Archivist</p>
+      </div>
+
+      <div class="profile-bio-wrapper">
+        <div class="profile-bio-display" id="profileBioDisplay">
+          <blockquote class="profile-quote" id="profileQuoteText">&ldquo;Just writing random stuff.&rdquo;</blockquote>
+          <button type="button" class="profile-edit-bio-btn" id="btnEditProfileBio" title="Edit your status bio">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span>Edit Bio</span>
+          </button>
+        </div>
+        <div class="profile-bio-edit-form" id="profileBioEditForm" hidden>
+          <input type="text" class="profile-bio-input" id="profileBioInput" maxlength="120" placeholder="Your status or favorite quote...">
+          <div class="profile-bio-actions">
+            <button type="button" class="btn-primary" style="padding: 6px 16px; font-size: 0.8rem;" id="btnSaveProfileBio">Save</button>
+            <button type="button" class="btn-secondary" style="padding: 6px 16px; font-size: 0.8rem;" id="btnCancelProfileBio">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-stats-grid">
+        <div class="profile-stat-card">
+          <span class="profile-stat-icon">✍️</span>
+          <span class="profile-stat-num" id="profileStatWorks">0</span>
+          <span class="profile-stat-label">works</span>
+        </div>
+        <div class="profile-stat-card">
+          <span class="profile-stat-icon">📖</span>
+          <span class="profile-stat-num" id="profileStatStories">0</span>
+          <span class="profile-stat-label">stories</span>
+        </div>
+        <div class="profile-stat-card">
+          <span class="profile-stat-icon">📝</span>
+          <span class="profile-stat-num" id="profileStatPoems">0</span>
+          <span class="profile-stat-label">poems</span>
+        </div>
+        <div class="profile-stat-card">
+          <span class="profile-stat-icon">❤️</span>
+          <span class="profile-stat-num" id="profileStatLikes">0</span>
+          <span class="profile-stat-label">likes</span>
+        </div>
+      </div>
+
+      <div class="profile-divider">
+        <span>Latest Works</span>
+      </div>
+
+      <div class="profile-latest-works" id="profileLatestWorks">
+        <!-- Injected dynamically via JS -->
       </div>
     </div>
   </div>
