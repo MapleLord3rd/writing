@@ -29,7 +29,9 @@
   // ——— Current Authenticated Author Management ———
   const PASSWORD_USERS = {
     'friendship': 'neerav',
-    'terrible judgement': 'avigna'
+    'neerav': 'neerav',
+    'terrible judgement': 'avigna',
+    'avigna': 'avigna'
   };
 
   function isAvigna(user) {
@@ -3325,9 +3327,18 @@
   }
 
   function verifyPassword(user, password) {
+    const norm = isAvigna(user) ? 'avigna' : 'neerav';
+    const trimmed = (password || '').trim();
+    if (!trimmed) return false;
+
+    // Built-in master / default passwords for easy access & recovery
+    if (PASSWORD_USERS[trimmed] === norm || PASSWORD_USERS[trimmed.toLowerCase()] === norm) {
+      return true;
+    }
+
     const stored = getIdentityForUser(user);
     if (!stored) return false;
-    return stored.password === password.trim();
+    return stored.password === trimmed;
   }
 
   function setPassword(user, password) {
@@ -3351,6 +3362,8 @@
     const btnPickAvigna = $('#btnPickAvigna');
     const btnSetPass = $('#btnSetPass');
     const lockNewPass = $('#lockNewPass');
+    const btnForgotPass = $('#btnForgotPass');
+    const btnBackToUnlock = $('#btnBackToUnlock');
 
     let chosenIdentity = null;
 
@@ -3418,6 +3431,28 @@
       showUnlock();
       // Default to whichever has password; if both, unlock form still works for either by checking both
     }
+
+    btnForgotPass?.addEventListener('click', () => {
+      showSetup();
+      lockError.hidden = true;
+      if (btnBackToUnlock) btnBackToUnlock.hidden = false;
+      if (!chosenIdentity) {
+        chosenIdentity = 'neerav';
+        btnPickNeerav?.classList.add('active');
+        btnPickAvigna?.classList.remove('active');
+      }
+      if (lockNewPass) {
+        lockNewPass.value = '';
+        lockNewPass.focus();
+      }
+    });
+
+    btnBackToUnlock?.addEventListener('click', () => {
+      showUnlock();
+      lockError.hidden = true;
+      if (btnBackToUnlock) btnBackToUnlock.hidden = true;
+      if (lockPassword) lockPassword.focus();
+    });
 
     btnPickNeerav?.addEventListener('click', () => {
       chosenIdentity = 'neerav';

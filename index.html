@@ -33,9 +33,10 @@
           required
         >
         <button type="submit" class="lock-btn">Unlock</button>
+        <button type="button" id="btnForgotPass" style="background: transparent; border: none; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-muted); cursor: pointer; text-decoration: underline; margin-top: 6px; padding: 4px;">Forgot password? Reset</button>
       </form>
       <div id="lockSetup" style="display: flex; flex-direction: column; gap: 14px; align-items: center;">
-        <p class="lock-subtitle">Choose your identity</p>
+        <p class="lock-subtitle">Choose your identity & password</p>
         <div style="display: flex; gap: 12px;">
           <button type="button" class="lock-btn" id="btnPickNeerav" style="width: 110px;">Neerav</button>
           <button type="button" class="lock-btn" id="btnPickAvigna" style="width: 110px;">Avigna</button>
@@ -44,11 +45,12 @@
           type="password"
           id="lockNewPass"
           class="lock-input"
-          placeholder="Set your password"
+          placeholder="Set new password"
           autocomplete="off"
           required
         >
-        <button type="button" class="lock-btn" id="btnSetPass" style="width: 100%;">Create & Unlock</button>
+        <button type="button" class="lock-btn" id="btnSetPass" style="width: 100%;">Set Password & Unlock</button>
+        <button type="button" id="btnBackToUnlock" style="background: transparent; border: none; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-muted); cursor: pointer; text-decoration: underline; padding: 4px;" hidden>Back to unlock</button>
       </div>
       <p class="lock-error" id="lockError" hidden>Incorrect password. Try again.</p>
     </div>

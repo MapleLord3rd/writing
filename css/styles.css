@@ -329,7 +329,6 @@ input, select {
   border-bottom: 1px solid var(--border-strong);
   box-shadow: var(--shadow-md);
 }
-}
 
 .nav.hidden {
   transform: translateY(-100%);
