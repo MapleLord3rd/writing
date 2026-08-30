@@ -155,7 +155,6 @@
       featured: Boolean(w.featured),
       collection: w.collection || null,
       is_published: true,
-      published_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       author_id: authUid || null
     };
@@ -295,7 +294,7 @@
         const row = mapWorkToDb(writing, currentAuthUid);
         const { error } = await supabase
           .from('works')
-          .insert([row]);
+          .upsert([row]);
 
         if (error) {
           console.warn('Supabase publish notice:', error.message);
@@ -2544,14 +2543,10 @@
 
       closeModal();
 
-      if (currentPage === 'reading' && currentReadingId) {
-        renderReading(currentReadingId);
-      } else if (currentPage === 'archive') {
-        renderArchive();
-      } else if (currentPage === 'home') {
-        renderFeatured();
+      if (writingData && writingData.id) {
+        navigateTo('reading', writingData.id);
       } else {
-        navigateTo(currentPage);
+        navigateTo('archive');
       }
     });
 
@@ -2850,13 +2845,25 @@
     const adminTools = $('#adminTools');
     if (adminTools) adminTools.hidden = true;
 
-    // Connect to Supabase Auth & Cloud Database
-    await initSupabaseAuth();
-    await loadSharedWorks();
-    setupRealtimeListener();
-
+    // Render immediately from base + local data so UI is instant
     renderFeatured();
     initQuoteOfDay();
+
+    // Connect to Supabase Auth & Cloud Database
+    try {
+      await initSupabaseAuth();
+      await loadSharedWorks();
+      setupRealtimeListener();
+
+      // Refresh active page with latest cloud works
+      if (currentPage === 'home') renderFeatured();
+      else if (currentPage === 'archive') renderArchive();
+      else if (currentPage === 'timeline') renderTimeline();
+      else if (currentPage === 'collections') renderCollections();
+      else if (currentPage === 'desk') renderDesk();
+    } catch (err) {
+      console.warn('Cloud sync init notice:', err);
+    }
 
     requestAnimationFrame(() => {
       observeReveals();
