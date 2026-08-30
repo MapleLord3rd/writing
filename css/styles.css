@@ -335,14 +335,14 @@ input, select {
 }
 
 .nav-inner {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: var(--sp-md);
   max-width: var(--container);
   width: 100%;
   margin: 0 auto;
   padding: 0 var(--sp-xl);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-md);
 }
 
 .nav-logo {
@@ -865,9 +865,8 @@ input, select {
 /* ============================================================
    MAGICAL MODE — VELVET CURTAINS REVEAL ON CARDS
    ============================================================ */
-.card-curtain-wrapper {
-  display: none;
-}
+.card-curtain-wrapper { display: none !important; }
+.card-curtain-left, .card-curtain-right, .card-curtain-seal { display: none !important; }
 
 [data-theme="magical"] .card-curtain-wrapper {
   display: block;
@@ -904,12 +903,18 @@ input, select {
   left: 0;
   border-right: 1.5px solid rgba(246, 211, 137, 0.6);
   transform-origin: left center;
+  animation: curtainCloseLeft 0.9s ease-out forwards;
+  animation-fill-mode: both;
+  animation-play-state: paused;
 }
 
 .card-curtain-right {
   right: 0;
   border-left: 1.5px solid rgba(246, 211, 137, 0.6);
   transform-origin: right center;
+  animation: curtainCloseRight 0.9s ease-out forwards;
+  animation-fill-mode: both;
+  animation-play-state: paused;
 }
 
 /* Golden Embroidered Tassel / Fringe at Bottom */
@@ -945,6 +950,8 @@ input, select {
   transition: all 0.45s var(--ease-out);
   user-select: none;
   white-space: nowrap;
+  animation: sealAppear 0.7s ease-out 0.35s forwards;
+  opacity: 0;
 }
 
 .curtain-seal-icon {
@@ -977,27 +984,57 @@ input, select {
   100% { transform: rotate(360deg) scale(1); }
 }
 
+/* Play close animation only after magical theme is switched (not on revisit) */
+[data-theme="magical"] .card-curtain-wrapper.animated .card-curtain-left,
+[data-theme="magical"] .card-curtain-wrapper.animated .card-curtain-right {
+  animation-play-state: running;
+}
+
 /* Hover / Focus Trigger to Part Curtains */
 .writing-card:hover .card-curtain-left,
 .writing-card:focus-within .card-curtain-left,
 .writing-card.curtain-open .card-curtain-left {
-  transform: translateX(-102%) scaleX(0.82) skewY(-2.5deg);
-  opacity: 0.2;
+  animation: curtainOpenLeft 0.6s ease-out forwards !important;
+  opacity: 1 !important;
 }
 
 .writing-card:hover .card-curtain-right,
 .writing-card:focus-within .card-curtain-right,
 .writing-card.curtain-open .card-curtain-right {
-  transform: translateX(102%) scaleX(0.82) skewY(2.5deg);
-  opacity: 0.2;
+  animation: curtainOpenRight 0.6s ease-out forwards !important;
+  opacity: 1 !important;
 }
 
 .writing-card:hover .card-curtain-seal,
 .writing-card:focus-within .card-curtain-seal,
 .writing-card.curtain-open .card-curtain-seal {
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(1.25);
-  filter: blur(4px);
+  opacity: 0 !important;
+  transform: translate(-50%, -50%) scale(1.25) !important;
+  filter: blur(4px) !important;
+  transition: opacity 0.4s ease, transform 0.4s ease, filter 0.4s ease;
+}
+
+/* When hover stops, curtain closes and seal fades back in */
+.writing-card:not(:hover):not(:focus-within):not(.curtain-open) .card-curtain-left {
+  animation: curtainCloseLeft 0.7s ease-in forwards;
+  animation-play-state: running !important;
+}
+.writing-card:not(:hover):not(:focus-within):not(.curtain-open) .card-curtain-right {
+  animation: curtainCloseRight 0.7s ease-in forwards;
+  animation-play-state: running !important;
+}
+/* Seal fades in sync with curtain close: invisible → half → full */
+.writing-card:not(:hover):not(:focus-within):not(.curtain-open) .card-curtain-seal {
+  animation: sealFadeIn 0.7s ease-out forwards;
+  animation-play-state: running !important;
+  opacity: 0 !important;
+  transition: none;
+}
+
+@keyframes sealFadeIn {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); filter: blur(2px); }
+  40%  { opacity: 0.5; transform: translate(-50%, -50%) scale(0.85); filter: blur(1px); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: none; }
 }
 
 .card-meta {
@@ -2668,6 +2705,52 @@ input, select {
   font-weight: 600;
 }
 
+.lock-btn--identity {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--text) !important;
+  border: 2px solid var(--border-strong) !important;
+  box-shadow: none !important;
+  font-family: var(--font-serif) !important;
+  font-size: var(--fs-lg) !important;
+  padding: 16px 20px !important;
+  transition: all var(--duration-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+/* grainy texture overlay */
+.lock-btn--identity::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.35'/%3E%3C/svg%3E");
+  pointer-events: none;
+  transition: opacity var(--duration-fast);
+}
+
+.lock-btn--identity.active {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--text) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 4px 20px rgba(122,46,51,0.4) !important;
+  transform: scale(1.05);
+}
+
+.lock-btn--identity.active::before {
+  opacity: 1;
+  background-color: rgba(122,46,51,0.65);
+}
+
+.lock-btn--identity.active:hover {
+  background: rgba(90,35,40,0.85) !important;
+  transform: scale(1.08);
+}
+
+.lock-btn--identity.active:hover::before {
+  background-color: rgba(122,46,51,0.75);
+}
+
 .lock-btn:hover {
   background: var(--accent-light);
   transform: translateY(-1px);
@@ -3740,9 +3823,10 @@ input, select {
 }
 
 .feature-category-btn.active {
-  color: var(--text-inverse);
-  background: var(--text);
-  border-color: var(--text);
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-faint);
 }
 
 /* Features Grid */
@@ -4347,3 +4431,31 @@ input, select {
   font-size: 0.75rem !important;
   color: var(--text-muted, #777);
 }
+@keyframes curtainCloseLeft {
+  0%   { transform: translateX(-105%); opacity: 0; }
+  60%  { transform: translateX(4%);    opacity: 1; }
+  100% { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes curtainCloseRight {
+  0%   { transform: translateX(105%);  opacity: 0; }
+  60%  { transform: translateX(-4%);   opacity: 1; }
+  100% { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes curtainOpenLeft {
+  from { transform: translateX(0) scaleX(1); opacity: 1; }
+  to   { transform: translateX(-105%) scaleX(0.75) skewY(-2deg); opacity: 0.35; }
+}
+
+@keyframes curtainOpenRight {
+  from { transform: translateX(0) scaleX(1); opacity: 1; }
+  to   { transform: translateX(105%) scaleX(0.75) skewY(2deg); opacity: 0; }
+}
+
+@keyframes sealAppear {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+

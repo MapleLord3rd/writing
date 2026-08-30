@@ -1394,6 +1394,11 @@
 
         document.documentElement.dataset.theme = next;
         localStorage.setItem('archive-theme', next);
+        // Trigger curtain close animation once on magical switch
+        if (next === 'magical') {
+          document.querySelectorAll('.card-curtain-wrapper').forEach(w => w.classList.add('animated'));
+          setTimeout(() => document.querySelectorAll('.card-curtain-wrapper').forEach(w => w.classList.remove('animated')), 1000);
+        }
       });
     }
   }
@@ -1451,8 +1456,13 @@
     });
   }
 
+  let previousPage = 'archive';
+
   function navigateTo(page, data) {
+    const cameFrom = currentPage || 'archive';
     $$('.page').forEach(p => p.classList.remove('active'));
+    currentPage = page;
+    previousPage = (page === 'reading') ? cameFrom : page;
 
     $$('.nav-link').forEach(l => {
       l.classList.toggle('active', l.dataset.nav === page);
@@ -1470,7 +1480,6 @@
       readerPanel.hidden = page !== 'reading';
     }
 
-    currentPage = page;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     switch (page) {
@@ -1548,11 +1557,6 @@
         <button class="card-bookmark-later-btn ${isSaved ? 'bookmarked' : ''}" data-bookmark-id="${writing.id}" title="${isSaved ? 'Remove from Bookmarks (Read Later)' : 'Save to Bookmarks (Read Later)'}" aria-label="Bookmark for later">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </button>
-        <button class="card-bookmark-btn ${isFav ? 'favorited' : ''}" data-favorite-id="${writing.id}" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}" aria-label="Favorite">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
           </svg>
         </button>
       </div>
@@ -2701,7 +2705,10 @@
       formContent.value = zenTextarea.value;
       updateCounters(formContent.value);
       zenOverlay.hidden = true;
-      formContent.focus();
+      // Open the Add New Writing modal directly (small form with publishing options)
+      const addModal = $('#adminModal');
+      if (addModal) addModal.hidden = false;
+      navigateTo('home');
     }
 
     btnExitZen?.addEventListener('click', exitZen);
@@ -3287,7 +3294,9 @@
   function initKeyboard() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (!adminModal.hidden) {
+        if ($('#page-reading') && !$('#page-reading').hidden) {
+          navigateTo(previousPage || 'archive');
+        } else if (!adminModal.hidden) {
           closeModal();
         } else if (!$('#postcardModal')?.hidden) {
           $('#postcardModal').hidden = true;
