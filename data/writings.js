@@ -54,16 +54,16 @@ const WRITINGS = [
     type: 'poem',
     date: '2026-08-30',
     author: 'neerav',
-    excerpt: '"Sometimes happiness isn’t a place, or a moment we try to chase..."',
+    excerpt: '"Sometimes happiness isn\'t a place, or a moment we try to chase..."',
     content: `Sometimes happiness isn't a place,
 Or a moment we try to chase.
-Sometimes it’s simply someone near,
+Sometimes it's simply someone near,
 Who turns a cloudy day sincere.
 
 It lives in laughter, loud and bright,
 In silly jokes that feel just right,
 In quiet talks beneath the sky,
-And knowing someone’s standing by.
+And knowing someone's standing by.
 
 A friend can make the ordinary glow,
 Turn little moments into a show.
