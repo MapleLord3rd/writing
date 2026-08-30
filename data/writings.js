@@ -49,73 +49,42 @@ And so on...`,
 
 const WRITINGS = [
   {
-    id: 'a-friend-like-you',
-    title: 'A Friend Like You',
+    id: 'where-happiness-lives',
+    title: 'Where Happiness Lives',
     type: 'poem',
-    date: '2026-08-29',
+    date: '2026-08-30',
     author: 'neerav',
-    excerpt: '"Some people walk into your life and change everything..."',
-    content: `Some people walk into your life
-and change everything —
-not loudly, not all at once,
-but quietly, like the first light of morning
-that makes you realize
-the darkness wasn't permanent.
+    excerpt: '"Sometimes happiness isn’t a place, or a moment we try to chase..."',
+    content: `Sometimes happiness isn't a place,
+Or a moment we try to chase.
+Sometimes it’s simply someone near,
+Who turns a cloudy day sincere.
 
-You were one of those people.
+It lives in laughter, loud and bright,
+In silly jokes that feel just right,
+In quiet talks beneath the sky,
+And knowing someone’s standing by.
 
-When the world felt too heavy
-and I couldn't find the words
-to explain why I was tired
-of pretending to be fine,
-you sat with me in that silence
-and made it feel less lonely.
+A friend can make the ordinary glow,
+Turn little moments into a show.
+A walk, a smile, a passing glance—
+Suddenly, life feels like a dance.
 
-You didn't try to fix me.
-You didn't say it would all be okay.
-You just stayed.
+Through changing seasons, days, and years,
+Through all our joys and little fears,
+The best of friendships gently prove
+That happiness is something we move through.
 
-And somehow, that was everything.
+For life may wander, twist, and bend,
+But every heart feels lighter when
+It has a hand to hold, a voice to hear—
+And someone who makes the world feel near.
 
-You taught me that friendship
-isn't about being there for the big moments
-(though you were),
-but about showing up
-for the small, unremarkable days
-when nothing happens
-except that we existed
-in the same space
-and that was enough.
-
-You reminded me what it feels like
-to laugh until my stomach hurts,
-to be understood without explaining,
-to be seen — really seen —
-and not turned away.
-
-I don't say it enough,
-but you are important.
-Not just to me,
-but to the version of me
-that still believes
-people can be kind
-for no reason other than
-they choose to be.
-
-Thank you.
-For every conversation.
-For every moment of patience.
-For being the kind of friend
-who makes life feel
-a little less heavy
-and a lot more possible.
-
-I'm lucky.
-The world is big and random
-and somehow,
-out of everyone,
-I found you.`,
-    tags: ['friendship', 'gratitude', 'life', 'important'],
+So here's to friendship, warm and true,
+To all the little things friends do—
+For happiness may come and go,
+But friendship gives it room to grow.`,
+    tags: ['friendship', 'happiness', 'gratitude', 'life'],
     readingTime: '2 min read',
     featured: true,
     collection: 'personal'
@@ -136,7 +105,7 @@ I found you.`,
    DELETED WRITINGS (GLOBAL BLACKLIST)
    Add IDs of any writings here to permanently remove them across all devices:
    ============================================================ */
-const DELETED_WRITINGS = [];
+const DELETED_WRITINGS = ['a-friend-like-you'];
 
 
 /* ============================================================
