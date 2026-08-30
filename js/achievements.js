@@ -47,7 +47,7 @@ function updateAchievementUI() {
     const pct = Math.round(progress * 100);
     const current = Math.min(getAchievementProgressValue(ac) || 0, ac.target || 0);
     const name = (ac.hidden && !unlocked) ? '???' : ac.name;
-    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''} rarity-${rarity}" data-id="${ac.id}" aria-label="${name}" role="button" tabindex="0">
+    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''} rarity-${rarity}" data-id="${ac.id}" aria-label="${name}" role="button" tabindex="0" style="font-family:var(--font-sans);color:#FAF5FF;">
       <div class="achievement-icon">${unlocked ? '✦' : ac.hidden ? '❓' : '◈'}</div>
       <h4 class="achievement-name">${name}</h4>
       <p class="achievement-desc">${(ac.hidden && !unlocked) ? 'Continue exploring the website...' : ac.desc}</p>
