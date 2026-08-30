@@ -13,7 +13,8 @@ const ACHIEVEMENTS = [
   { id: 'collaborative-read', name: 'Collaboration', desc: 'Read a collaborative writing.', medium: true, unlocks: [] },
   { id: 'tag-explorer', name: 'Tag Explorer', desc: 'Browse by tag.', medium: true, unlocks: [] },
   { id: 'timeline-visitor', name: 'Time Traveler', desc: 'Visit the timeline.', hard: true, unlocks: [] },
-  { id: 'all-poems', name: 'Archivist', desc: 'Read every writing.', hard: true, unlocks: ['theme-paper','theme-midnight','theme-minimalist'] },
+  { id: 'secret-archive', name: '???', desc: 'Some stories are found. Others are discovered.', category: 'secret', rarity: 'secret', hidden: true, unlocks: [] },
+  { id: 'all-poems', name: 'Archivist', desc: 'Read every writing.', category: 'milestones', rarity: 'epic', unlocks: ['theme-paper','theme-midnight','theme-minimalist'] },
   { id: 'ten-favorites', name: 'Curator', desc: 'Favorite ten writings.', hard: true, unlocks: [] }
 ];
 function updateAchievementUI() {
@@ -22,12 +23,16 @@ function updateAchievementUI() {
   const a = getAchievements();
   container.innerHTML = ACHIEVEMENTS.map(ac => {
     const unlocked = !!a[ac.id]?.unlocked;
+    const rarity = ac.rarity || (ac.easy ? 'common' : ac.medium ? 'uncommon' : 'rare');
+    const category = ac.category || (ac.easy ? 'writing' : 'exploration');
     const progress = unlocked ? 'Unlocked' : (ac.easy ? 'Easy' : ac.medium ? 'Medium' : 'Hard');
-    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''}" data-id="${ac.id}" aria-label="${ac.name}">
-      <div class="achievement-header"><span class="achievement-icon">${unlocked ? '✦' : '◈'}</span><h4>${ac.name}</h4></div>
-      <p class="achievement-desc">${ac.desc}</p>
+    const name = (ac.hidden && !unlocked) ? '??? Secret Achievement' : ac.name;
+    return `<div class="achievement-card ${unlocked ? 'unlocked' : ''} rarity-${rarity}" data-id="${ac.id}" aria-label="${name}">
+      <div class="achievement-header"><span class="achievement-icon">${unlocked ? '✦' : '◈'}</span><h4>${name}</h4></div>
+      <p class="achievement-desc">${(ac.hidden && !unlocked) ? 'Continue exploring the website...' : ac.desc}</p>
+      <div class="achievement-meta"><span class="achievement-category">${category} • ${rarity}</span><span class="achievement-difficulty">${progress}</span></div>
       <div class="achievement-bar-wrap"><div class="achievement-bar" style="width:${unlocked?100:0}%"></div></div>
-      <div class="achievement-meta"><span class="achievement-difficulty">${ac.easy?'Easy':ac.medium?'Medium':'Hard'}</span><span class="achievement-status">${unlocked?'Unlocked':'Locked'}</span></div>
+      ${unlocked ? `<div class="achievement-date">Unlocked ${new Date(a[ac.id].date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>` : ''}
     </div>`;
   }).join('');
 }

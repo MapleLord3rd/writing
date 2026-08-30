@@ -70,5 +70,15 @@ function validateWork(title, content, workHistory) {
   const reasons = [];
   if (qualifies) reasons.push('Content appears original and structured');
   if (workHistory && workHistory.editEvents) reasons.push('Editing activity present');
+  // AI plug-in: can swap local heuristic for external model result
+  if (window.validateWithAI && typeof window.validateWithAI === 'function') {
+    try {
+      const aiResult = window.validateWithAI({ title, content, workHistory });
+      if (aiResult && typeof aiResult.qualifies === 'boolean') {
+        return { ...aiResult, score: aiResult.score ?? score, confidence: aiResult.confidence ?? (score/100), fingerprint: fp };
+      }
+    } catch (e) { /* fall back to local */ }
+  }
+
   return { qualifies, confidence: score / 100, score, reasons, fingerprint: fp };
 }
