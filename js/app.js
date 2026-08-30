@@ -12,6 +12,7 @@
   let currentAuthorFilter = 'all';
   let currentSort = 'newest';
   let currentSearch = '';
+  let _lastSearchRendered = '';
   let activeTagFilters = [];
   let lastScrollY = 0;
   let currentReadingId = null;
@@ -82,9 +83,9 @@
       const nextUser = current === 'neerav' ? 'avigna' : 'neerav';
       setCurrentUser(nextUser);
 
-      // Re-render reading view if active so edit/delete buttons update immediately
+      // Update edit/delete buttons on reading view without destroying DOM or scroll position
       if (currentPage === 'reading' && currentReadingId) {
-        renderReading(currentReadingId);
+        updateReadingAuthorTools();
       }
     });
 
@@ -117,7 +118,16 @@
     }
   }
 
+  // ——— Cached writings (invalidated by any write through addWriting/updateWriting/deleteWriting/saveCustomWritings) ———
+  let _writingsCache = null;
+
+  function invalidateWritingsCache() {
+    _writingsCache = null;
+  }
+
   function getWritings() {
+    if (_writingsCache) return _writingsCache;
+
     const baseWritings = (typeof WRITINGS !== 'undefined' && Array.isArray(WRITINGS)) ? WRITINGS : [];
     const deletedIds = getDeletedIds();
 
@@ -150,13 +160,15 @@
       }
     });
 
-    return Array.from(map.values());
+    _writingsCache = Array.from(map.values());
+    return _writingsCache;
   }
 
   function saveCustomWritings(writings) {
     localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(writings));
     // Also sync to legacy for compatibility
     localStorage.setItem(STORAGE_KEY, JSON.stringify(writings));
+    invalidateWritingsCache();
   }
 
   function addWriting(writing) {
@@ -167,6 +179,7 @@
     // Remove from deletedIds if it was previously marked deleted
     const deletedIds = getDeletedIds().filter(id => id !== writing.id);
     localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+    invalidateWritingsCache();
 
     return writing;
   }
@@ -177,6 +190,7 @@
     if (index !== -1) {
       custom[index] = { ...custom[index], ...updatedData };
       saveCustomWritings(custom);
+      invalidateWritingsCache();
       return custom[index];
     } else {
       // It might be in base writings; copy to custom with updates
@@ -211,10 +225,12 @@
     // 2. Remove from custom local storage
     const custom = getCustomWritings().filter(w => w.id !== id);
     localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(custom));
+    invalidateWritingsCache();
 
     // 3. Remove from legacy storage
     const legacy = (localStorage.getItem(STORAGE_KEY) ? JSON.parse(localStorage.getItem(STORAGE_KEY)) : []).filter(w => w.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    invalidateWritingsCache();
 
     return true;
   }
@@ -335,6 +351,14 @@
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
   }
 
   // ——— Web Audio API Ambient Soundscapes ———
@@ -619,6 +643,9 @@
   }
 
   function initAmbientSound() {
+    // Skip ambient sound init on mobile to conserve battery/CPU
+    if (window.innerWidth <= 768) return;
+
     const toggleBtn = $('#ambientToggleBtn');
     const popover = $('#ambientPopover');
     const volumeSlider = $('#ambientVolume');
@@ -719,16 +746,33 @@
   // ——— Particles ———
   function initParticles() {
     if (!particlesCanvas) return;
+
+    // Skip canvas animation on mobile screens or when reduced motion is preferred to conserve CPU/battery
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion || window.innerWidth <= 768) {
+      particlesCanvas.style.display = 'none';
+      return;
+    }
+
     const ctx = particlesCanvas.getContext('2d');
+    if (!ctx) return;
     let particles = [];
-    const count = Math.min(40, Math.floor(window.innerWidth / 30));
+    const count = Math.min(30, Math.floor(window.innerWidth / 40));
+    let animationFrameId = null;
+    let isPaused = false;
 
     function resize() {
+      if (window.innerWidth <= 768) {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        particlesCanvas.style.display = 'none';
+        return;
+      }
+      particlesCanvas.style.display = 'block';
       particlesCanvas.width = window.innerWidth;
       particlesCanvas.height = window.innerHeight;
     }
     resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', debounce(resize, 200), { passive: true });
 
     for (let i = 0; i < count; i++) {
       particles.push({
@@ -742,6 +786,7 @@
     }
 
     function draw() {
+      if (isPaused) return;
       ctx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
       const isDark = document.documentElement.dataset.theme === 'dark';
       const color = isDark ? '232, 226, 214' : '44, 44, 44';
@@ -759,9 +804,20 @@
         ctx.fillStyle = `rgba(${color}, ${p.opacity})`;
         ctx.fill();
       }
-      requestAnimationFrame(draw);
+      animationFrameId = requestAnimationFrame(draw);
     }
     draw();
+
+    // Pause particle animation loop when tab is backgrounded
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        isPaused = true;
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      } else if (isPaused && window.innerWidth > 768) {
+        isPaused = false;
+        draw();
+      }
+    });
   }
 
   // ——— Theme ———
@@ -782,23 +838,32 @@
 
   // ——— Navigation ———
   function initNav() {
+    let ticking = false;
     window.addEventListener('scroll', () => {
-      const y = window.scrollY;
-      nav.classList.toggle('scrolled', y > 50);
-      if (y > lastScrollY && y > 200) {
-        nav.classList.add('hidden');
-      } else {
-        nav.classList.remove('hidden');
-      }
-      lastScrollY = y;
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const y = window.scrollY;
+          nav.classList.toggle('scrolled', y > 50);
+          if (y > lastScrollY && y > 200) {
+            nav.classList.add('hidden');
+          } else {
+            nav.classList.remove('hidden');
+          }
+          lastScrollY = y;
 
-      if (currentPage === 'reading') {
-        const article = readingContent;
-        const total = article.scrollHeight - window.innerHeight;
-        const progress = Math.min(100, Math.max(0,
-          ((window.scrollY - article.offsetTop) / (total || 1)) * 100
-        ));
-        readingProgressBar.style.width = progress + '%';
+          if (currentPage === 'reading' && readingProgressBar) {
+            const article = readingContent;
+            if (article) {
+              const total = article.scrollHeight - window.innerHeight;
+              const progress = Math.min(100, Math.max(0,
+                ((y - article.offsetTop) / (total || 1)) * 100
+              ));
+              readingProgressBar.style.width = progress + '%';
+            }
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     }, { passive: true });
 
@@ -1093,9 +1158,18 @@
       renderArchive();
     });
 
+    let _searchDebounce;
     searchInput.addEventListener('input', (e) => {
-      currentSearch = e.target.value.trim();
-      renderArchive();
+      const value = e.target.value.trim();
+      currentSearch = value;
+      clearTimeout(_searchDebounce);
+      _searchDebounce = setTimeout(() => {
+        // Only re-render if the search term actually changed
+        if (value !== _lastSearchRendered) {
+          _lastSearchRendered = value;
+          renderArchive();
+        }
+      }, 120);
     });
 
     sortSelect.addEventListener('change', (e) => {
@@ -1126,21 +1200,13 @@
   }
 
   // ——— Reading Page ———
-  function renderReading(writingId) {
-    currentReadingId = writingId;
-    const writing = getWritings().find(w => w.id === writingId);
-    if (!writing) {
-      navigateTo('archive');
-      return;
-    }
+  function updateReadingAuthorTools() {
+    if (currentPage !== 'reading' || !currentReadingId) return;
+    const writing = getWritings().find(w => w.id === currentReadingId);
+    if (!writing) return;
+    if (!writing) return;
 
-    const currentUser = getCurrentUser();
-    const isAuthor = (writing.author || 'neerav') === currentUser;
-
-    const adminTools = $('#adminTools');
-    if (adminTools) adminTools.hidden = false;
-
-    // Show Edit and Delete buttons only if the current user is the author
+    const isAuthor = canUserEdit(writing.author);
     const btnEdit = $('#btnEdit');
     const btnDelete = $('#btnDelete');
     if (btnEdit) {
@@ -1151,6 +1217,22 @@
       btnDelete.style.display = isAuthor ? 'flex' : 'none';
       btnDelete.title = isAuthor ? 'Delete this writing' : 'Only the author can delete';
     }
+  }
+
+  function renderReading(writingId) {
+    currentReadingId = writingId;
+    const allWritings = getWritings();
+    const writing = allWritings.find(w => w.id === writingId);
+    if (!writing) {
+      navigateTo('archive');
+      return;
+    }
+
+    const adminTools = $('#adminTools');
+    if (adminTools) adminTools.hidden = false;
+
+    // Show Edit and Delete buttons only if the current user is the author
+    updateReadingAuthorTools();
 
     // Update favorite button state
     const btnBookmark = $('#btnBookmarkReading');
@@ -1162,7 +1244,7 @@
     }
 
     const isPoem = writing.type === 'poem';
-    const sortedWritings = [...getWritings()].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sortedWritings = allWritings.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
     const currentIndex = sortedWritings.findIndex(w => w.id === writingId);
     const prevWork = currentIndex < sortedWritings.length - 1 ? sortedWritings[currentIndex + 1] : null;
     const nextWork = currentIndex > 0 ? sortedWritings[currentIndex - 1] : null;
@@ -1187,7 +1269,7 @@
       const parent = getWritings().find(w => w.id === writing.inResponseTo);
       if (parent) {
         dialogueBannerHtml = `
-          <div class="literary-dialogue-banner reveal-up">
+          <div class="literary-dialogue-banner">
             <div class="dialogue-meta">
               <span class="dialogue-badge">Literary Dialogue</span>
               <span class="dialogue-text">Written in response to <strong>&ldquo;${escapeHTML(parent.title)}&rdquo;</strong> by ${getAuthorDisplayName(parent.author)}</span>
@@ -1263,10 +1345,15 @@
       `<span class="reading-tag" data-tag="${escapeHTML(t)}">#${escapeHTML(t)}</span>`
     ).join('');
 
-    // Related works
-    const related = getWritings()
+    // Related works — stable sort by shared tag count desc, then date desc (no random shuffle)
+    const related = allWritings
       .filter(w => w.id !== writing.id && (w.tags || []).some(t => (writing.tags || []).includes(t)))
-      .sort(() => Math.random() - 0.5)
+      .sort((a, b) => {
+        const commonA = (a.tags || []).filter(t => (writing.tags || []).includes(t)).length;
+        const commonB = (b.tags || []).filter(t => (writing.tags || []).includes(t)).length;
+        if (commonB !== commonA) return commonB - commonA;
+        return new Date(b.date) - new Date(a.date);
+      })
       .slice(0, 3);
 
     const relatedHtml = related.map((w, i) =>
@@ -1296,7 +1383,7 @@
     navHtml += '</div>';
 
     readingContent.innerHTML = `
-      <div class="reading-header reveal-up">
+      <div class="reading-header">
         <span class="reading-type">${escapeHTML(writing.type)}</span>
         <span class="reading-date">${formatDateLong(writing.date)} · Written by ${escapeHTML(authorName)}</span>
         <h1 class="reading-title">${escapeHTML(writing.title)}</h1>
@@ -1309,7 +1396,7 @@
         <span>✦</span>
       </div>
 
-      <div class="reading-body ${isPoem ? 'reading-body--poem' : ''} reveal-up" id="readingBodyContainer">
+      <div class="reading-body ${isPoem ? 'reading-body--poem' : ''}" id="readingBodyContainer">
         ${bodyHtml}
       </div>
 
@@ -1390,6 +1477,7 @@
     });
 
     readingProgressBar.style.width = '0%';
+    requestAnimationFrame(() => observeReveals());
   }
 
   // ——— Reader Customizer (Aa Panel) ———
@@ -1555,6 +1643,9 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const p = POSTCARD_PALETTES[themeKey] || POSTCARD_PALETTES.parchment;
+
+    // Skip expensive 1080x1080 render on mobile to save GPU/CPU
+    if (window.innerWidth <= 768) return;
 
     const width = 1080;
     const height = 1080;
