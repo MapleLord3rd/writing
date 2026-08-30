@@ -3298,7 +3298,45 @@
     });
   }
 
-  // ——— Password Lock Screen ———
+  // ——— User-Set Password Lock (one per identity, saved in localStorage) ———
+  const AUTH_STORE_KEY = 'archive-auth-v1';
+
+  function getAuthStore() {
+    try {
+      const s = localStorage.getItem(AUTH_STORE_KEY);
+      return s ? JSON.parse(s) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveAuthStore(data) {
+    localStorage.setItem(AUTH_STORE_KEY, JSON.stringify(data));
+  }
+
+  function getIdentityForUser(user) {
+    const norm = isAvigna(user) ? 'avigna' : 'neerav';
+    const store = getAuthStore();
+    return store[norm] || null;
+  }
+
+  function hasPasswordFor(user) {
+    return Boolean(getIdentityForUser(user));
+  }
+
+  function verifyPassword(user, password) {
+    const stored = getIdentityForUser(user);
+    if (!stored) return false;
+    return stored.password === password.trim();
+  }
+
+  function setPassword(user, password) {
+    const norm = isAvigna(user) ? 'avigna' : 'neerav';
+    const store = getAuthStore();
+    store[norm] = { password: password.trim(), setAt: new Date().toISOString() };
+    saveAuthStore(store);
+  }
+
   function initLockScreen() {
     const lockScreen = $('#lockScreen');
     const mainContent = $('#mainContent');
@@ -3307,54 +3345,148 @@
     const lockError = $('#lockError');
     const lockScreenContent = lockScreen.querySelector('.lock-screen-content');
 
-    const CORRECT_PASSWORDS = ['terrible judgement', 'friendship'];
+    // First-time setup: show identity picker + set password
+    const lockSetup = $('#lockSetup');
+    const btnPickNeerav = $('#btnPickNeerav');
+    const btnPickAvigna = $('#btnPickAvigna');
+    const btnSetPass = $('#btnSetPass');
+    const lockNewPass = $('#lockNewPass');
+
+    let chosenIdentity = null;
+
+    function showSetup() {
+      lockForm.hidden = true;
+      if (lockSetup) lockSetup.style.display = 'flex';
+    }
+
+    function showUnlock() {
+      lockForm.hidden = false;
+      if (lockSetup) lockSetup.style.display = 'none';
+    }
+
+    function doUnlock(user) {
+      setCurrentUser(user);
+      sessionStorage.setItem('archive-unlocked', 'true');
+      lockError.hidden = true;
+      lockScreen.style.opacity = '0';
+      setTimeout(() => {
+        lockScreen.hidden = true;
+        mainContent.hidden = false;
+        lockScreen.style.opacity = '1';
+      }, 500);
+      updateUserBadge();
+    }
+
+    function tryUnlock(user) {
+      const entered = (lockPassword ? lockPassword.value : '').trim();
+      if (verifyPassword(user, entered)) {
+        doUnlock(user);
+      } else {
+        lockError.hidden = false;
+        if (lockScreenContent) lockScreenContent.classList.add('shake');
+        if (lockPassword) lockPassword.value = '';
+        if (lockPassword) lockPassword.focus();
+        setTimeout(() => {
+          if (lockScreenContent) lockScreenContent.classList.remove('shake');
+        }, 400);
+      }
+    }
+
+    // Check if any identity has a password set
+    const hasNeerav = hasPasswordFor('neerav');
+    const hasAvigna = hasPasswordFor('avigna');
 
     if (sessionStorage.getItem('archive-unlocked') === 'true') {
       lockScreen.hidden = true;
       mainContent.hidden = false;
+      // If already unlocked, just restore current user from last session or default
+      let last = sessionStorage.getItem('last-author');
+      if (last) setCurrentUser(last);
       return;
     }
 
     lockScreen.hidden = false;
     mainContent.hidden = true;
 
-    lockForm.addEventListener('submit', (e) => {
+    // If neither has password => first-time setup
+    if (!hasNeerav && !hasAvigna) {
+      showSetup();
+      chosenIdentity = 'neerav';
+      btnPickNeerav?.classList.add('active');
+      btnPickAvigna?.classList.remove('active');
+    } else {
+      showUnlock();
+      // Default to whichever has password; if both, unlock form still works for either by checking both
+    }
+
+    btnPickNeerav?.addEventListener('click', () => {
+      chosenIdentity = 'neerav';
+      btnPickNeerav.classList.add('active');
+      btnPickAvigna.classList.remove('active');
+    });
+
+    btnPickAvigna?.addEventListener('click', () => {
+      chosenIdentity = 'avigna';
+      btnPickAvigna.classList.add('active');
+      btnPickNeerav.classList.remove('active');
+    });
+
+    btnSetPass?.addEventListener('click', () => {
+      const pass = lockNewPass ? lockNewPass.value.trim() : '';
+      if (!chosenIdentity) chosenIdentity = 'neerav';
+      if (!pass) {
+        lockError.hidden = false;
+        lockError.textContent = 'Enter a password to continue.';
+        return;
+      }
+      setPassword(chosenIdentity, pass);
+      sessionStorage.setItem('archive-unlocked', 'true');
+      sessionStorage.setItem('last-author', chosenIdentity);
+      doUnlock(chosenIdentity);
+    });
+
+    lockForm?.addEventListener('submit', (e) => {
       e.preventDefault();
-      const enteredPassword = lockPassword.value.trim().toLowerCase();
+      lockError.hidden = true;
+      lockError.textContent = 'Incorrect password. Try again.';
+      const entered = lockPassword ? lockPassword.value.trim() : '';
 
-      if (CORRECT_PASSWORDS.includes(enteredPassword)) {
-        const authorUser = PASSWORD_USERS[enteredPassword] || 'neerav';
-        setCurrentUser(authorUser);
+      // Try both identities
+      if (verifyPassword('neerav', entered)) {
         sessionStorage.setItem('archive-unlocked', 'true');
-        lockError.hidden = true;
-
-        lockScreen.style.opacity = '0';
-        setTimeout(() => {
-          lockScreen.hidden = true;
-          mainContent.hidden = false;
-          lockScreen.style.opacity = '1';
-        }, 500);
+        sessionStorage.setItem('last-author', 'neerav');
+        doUnlock('neerav');
+      } else if (verifyPassword('avigna', entered)) {
+        sessionStorage.setItem('archive-unlocked', 'true');
+        sessionStorage.setItem('last-author', 'avigna');
+        doUnlock('avigna');
       } else {
         lockError.hidden = false;
-        lockScreenContent.classList.add('shake');
-        lockPassword.value = '';
-        lockPassword.focus();
-
+        if (lockScreenContent) lockScreenContent.classList.add('shake');
+        if (lockPassword) lockPassword.value = '';
+        if (lockPassword) lockPassword.focus();
         setTimeout(() => {
-          lockScreenContent.classList.remove('shake');
+          if (lockScreenContent) lockScreenContent.classList.remove('shake');
         }, 400);
       }
     });
   }
 
-  // ——— Lock Archive Button ———
+  // ——— Lock Archive Button -> Change Password ———
   function initLockButton() {
     const lockBtn = $('#lockArchiveBtn');
     if (!lockBtn) return;
 
+    lockBtn.title = 'Change Password';
+    lockBtn.setAttribute('aria-label', 'Change your password');
+
     lockBtn.addEventListener('click', () => {
-      if (confirm('Lock the archive? You will need to re-enter the password.')) {
+      const currentUser = getCurrentUser();
+      const newPass = prompt('Enter new password for ' + getAuthorDisplayName(currentUser) + ':');
+      if (newPass !== null && newPass.trim()) {
+        setPassword(currentUser, newPass.trim());
         sessionStorage.removeItem('archive-unlocked');
+        sessionStorage.removeItem('last-author');
         location.reload();
       }
     });

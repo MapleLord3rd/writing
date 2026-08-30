@@ -23,18 +23,34 @@
       </div>
       <h1 class="lock-title">The Archive</h1>
       <p class="lock-subtitle">Enter password to unlock</p>
-      <form class="lock-form" id="lockForm">
+      <form class="lock-form" id="lockForm" hidden>
         <input
           type="password"
           id="lockPassword"
           class="lock-input"
-          placeholder="Password"
+          placeholder="Your password"
           autocomplete="off"
           required
         >
         <button type="submit" class="lock-btn">Unlock</button>
       </form>
-      <p class="lock-error" id="lockError" hidden>Incorrect password. Please try again.</p>
+      <div id="lockSetup" style="display: flex; flex-direction: column; gap: 14px; align-items: center;">
+        <p class="lock-subtitle">Choose your identity</p>
+        <div style="display: flex; gap: 12px;">
+          <button type="button" class="lock-btn" id="btnPickNeerav" style="width: 110px;">Neerav</button>
+          <button type="button" class="lock-btn" id="btnPickAvigna" style="width: 110px;">Avigna</button>
+        </div>
+        <input
+          type="password"
+          id="lockNewPass"
+          class="lock-input"
+          placeholder="Set your password"
+          autocomplete="off"
+          required
+        >
+        <button type="button" class="lock-btn" id="btnSetPass" style="width: 100%;">Create & Unlock</button>
+      </div>
+      <p class="lock-error" id="lockError" hidden>Incorrect password. Try again.</p>
     </div>
   </div>
 
