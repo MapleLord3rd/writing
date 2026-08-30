@@ -18,50 +18,205 @@
 
   // ——— Storage Keys ———
   const STORAGE_KEY = 'archive-writings';
+  const CUSTOM_STORAGE_KEY = 'archive-writings-custom';
+  const DELETED_KEY = 'archive-deleted';
   const FAVORITES_KEY = 'archive-favorites';
   const DRAFT_KEY = 'archive-draft';
   const READER_PREFS_KEY = 'archive-reader-prefs';
+  const USER_KEY = 'archive-user';
 
-  // ——— Data Management (localStorage) ———
-  function getWritings() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error('Failed to parse stored writings:', e);
-      }
-    }
-    return typeof WRITINGS !== 'undefined' ? WRITINGS : [];
+  // ——— Current Authenticated Author Management ———
+  const PASSWORD_USERS = {
+    'friendship': 'neerav',
+    'terrible judgement': 'avigna'
+  };
+
+  function isAvigna(user) {
+    return user === 'avigna' || user === 'friend';
   }
 
-  function saveWritings(writings) {
+  function getAuthorDisplayName(author) {
+    return isAvigna(author) ? 'Avigna' : 'Neerav';
+  }
+
+  function canUserEdit(writingAuthor) {
+    const current = getCurrentUser();
+    const author = writingAuthor || 'neerav';
+    if (isAvigna(author)) {
+      return isAvigna(current);
+    }
+    return current === 'neerav';
+  }
+
+  function getCurrentUser() {
+    const raw = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY) || localStorage.getItem('last-author') || 'neerav';
+    return isAvigna(raw) ? 'avigna' : 'neerav';
+  }
+
+  function setCurrentUser(user) {
+    const normalized = isAvigna(user) ? 'avigna' : 'neerav';
+    sessionStorage.setItem(USER_KEY, normalized);
+    localStorage.setItem(USER_KEY, normalized);
+    localStorage.setItem('last-author', normalized);
+    updateUserBadge();
+  }
+
+  function updateUserBadge() {
+    const user = getCurrentUser();
+    const badge = document.getElementById('navUserBadge');
+    const nameEl = document.getElementById('userProfileName');
+    if (badge && nameEl) {
+      nameEl.textContent = getAuthorDisplayName(user);
+      badge.classList.toggle('user--avigna', isAvigna(user));
+      badge.classList.toggle('user--friend', isAvigna(user));
+      badge.title = `Current Author: ${getAuthorDisplayName(user)} (Click to switch)`;
+    }
+  }
+
+  function initUserBadge() {
+    const badge = document.getElementById('navUserBadge');
+    if (!badge) return;
+
+    badge.addEventListener('click', () => {
+      const current = getCurrentUser();
+      const nextUser = current === 'neerav' ? 'avigna' : 'neerav';
+      setCurrentUser(nextUser);
+
+      // Re-render reading view if active so edit/delete buttons update immediately
+      if (currentPage === 'reading' && currentReadingId) {
+        renderReading(currentReadingId);
+      }
+    });
+
+    badge.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        badge.click();
+      }
+    });
+  }
+
+  // ——— Data Management (Reconciles Code Base + Local Storage + Deletions) ———
+  function getDeletedIds() {
+    try {
+      const stored = localStorage.getItem(DELETED_KEY);
+      const local = stored ? JSON.parse(stored) : [];
+      const base = (typeof DELETED_WRITINGS !== 'undefined' && Array.isArray(DELETED_WRITINGS)) ? DELETED_WRITINGS : [];
+      return [...new Set([...local, ...base])];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function getCustomWritings() {
+    try {
+      const stored = localStorage.getItem(CUSTOM_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function getWritings() {
+    const baseWritings = (typeof WRITINGS !== 'undefined' && Array.isArray(WRITINGS)) ? WRITINGS : [];
+    const deletedIds = getDeletedIds();
+
+    // Migrate any truly custom items from legacy storage key if needed
+    if (!localStorage.getItem(CUSTOM_STORAGE_KEY) && localStorage.getItem(STORAGE_KEY)) {
+      try {
+        const legacy = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (Array.isArray(legacy)) {
+          const baseIds = new Set(baseWritings.map(w => w.id));
+          const trulyCustom = legacy.filter(w => !baseIds.has(w.id));
+          localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(trulyCustom));
+        }
+      } catch (e) {}
+    }
+
+    const customWritings = getCustomWritings();
+    const map = new Map();
+
+    // 1. Add base writings from data/writings.js (unless marked deleted)
+    baseWritings.forEach(w => {
+      if (!deletedIds.includes(w.id)) {
+        map.set(w.id, { ...w });
+      }
+    });
+
+    // 2. Overlay custom writings added or edited locally (unless marked deleted)
+    customWritings.forEach(w => {
+      if (!deletedIds.includes(w.id)) {
+        map.set(w.id, { ...w });
+      }
+    });
+
+    return Array.from(map.values());
+  }
+
+  function saveCustomWritings(writings) {
+    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(writings));
+    // Also sync to legacy for compatibility
     localStorage.setItem(STORAGE_KEY, JSON.stringify(writings));
   }
 
   function addWriting(writing) {
-    const writings = getWritings();
-    writings.push(writing);
-    saveWritings(writings);
+    const custom = getCustomWritings();
+    custom.push(writing);
+    saveCustomWritings(custom);
+
+    // Remove from deletedIds if it was previously marked deleted
+    const deletedIds = getDeletedIds().filter(id => id !== writing.id);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+
     return writing;
   }
 
   function updateWriting(id, updatedData) {
-    const writings = getWritings();
-    const index = writings.findIndex(w => w.id === id);
+    const custom = getCustomWritings();
+    const index = custom.findIndex(w => w.id === id);
     if (index !== -1) {
-      writings[index] = { ...writings[index], ...updatedData };
-      saveWritings(writings);
-      return writings[index];
+      custom[index] = { ...custom[index], ...updatedData };
+      saveCustomWritings(custom);
+      return custom[index];
+    } else {
+      // It might be in base writings; copy to custom with updates
+      const baseWriting = (typeof WRITINGS !== 'undefined' && Array.isArray(WRITINGS)) ? WRITINGS.find(w => w.id === id) : null;
+      if (baseWriting) {
+        const newCustom = { ...baseWriting, ...updatedData };
+        custom.push(newCustom);
+        saveCustomWritings(custom);
+        return newCustom;
+      }
     }
     return null;
   }
 
   function deleteWriting(id) {
     const writings = getWritings();
-    const filtered = writings.filter(w => w.id !== id);
-    saveWritings(filtered);
-    return filtered.length < writings.length;
+    const writing = writings.find(w => w.id === id);
+
+    if (writing && !canUserEdit(writing.author)) {
+      const authorDisplayName = getAuthorDisplayName(writing.author);
+      alert(`🔒 Permission denied:\n\nOnly the author (${authorDisplayName}) can delete this piece.`);
+      return false;
+    }
+
+    // 1. Mark in deleted list
+    const deletedIds = getDeletedIds();
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+    }
+
+    // 2. Remove from custom local storage
+    const custom = getCustomWritings().filter(w => w.id !== id);
+    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(custom));
+
+    // 3. Remove from legacy storage
+    const legacy = (localStorage.getItem(STORAGE_KEY) ? JSON.parse(localStorage.getItem(STORAGE_KEY)) : []).filter(w => w.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+
+    return true;
   }
 
   function exportData() {
@@ -318,6 +473,141 @@
           crackleSource.start();
         }
       }, 160);
+
+    } else if (type === 'waves') {
+      // Rhythmic ocean waves / tidal swell
+      const waveBuffer = createNoiseBuffer(ctx, 6, 'pink');
+      const waveSource = ctx.createBufferSource();
+      waveSource.buffer = waveBuffer;
+      waveSource.loop = true;
+
+      const waveFilter = ctx.createBiquadFilter();
+      waveFilter.type = 'lowpass';
+      waveFilter.frequency.setValueAtTime(360, ctx.currentTime);
+      waveFilter.Q.setValueAtTime(1.8, ctx.currentTime);
+
+      // LFO for filter cutoff oscillation
+      const waveLfo = ctx.createOscillator();
+      waveLfo.type = 'sine';
+      waveLfo.frequency.setValueAtTime(0.11, ctx.currentTime); // ~9 second wave cycle
+
+      const waveLfoGain = ctx.createGain();
+      waveLfoGain.gain.setValueAtTime(240, ctx.currentTime);
+
+      waveLfo.connect(waveLfoGain);
+      waveLfoGain.connect(waveFilter.frequency);
+
+      // Swell gain oscillation
+      const waveGain = ctx.createGain();
+      waveGain.gain.setValueAtTime(0.55, ctx.currentTime);
+
+      const swellLfo = ctx.createOscillator();
+      swellLfo.type = 'sine';
+      swellLfo.frequency.setValueAtTime(0.11, ctx.currentTime);
+
+      const swellGain = ctx.createGain();
+      swellGain.gain.setValueAtTime(0.38, ctx.currentTime);
+
+      swellLfo.connect(swellGain);
+      swellGain.connect(waveGain.gain);
+
+      waveSource.connect(waveFilter);
+      waveFilter.connect(waveGain);
+      waveGain.connect(ambientGainNode);
+
+      waveSource.start();
+      waveLfo.start();
+      swellLfo.start();
+
+      ambientSourceNodes.push(waveSource, waveLfo, swellLfo);
+
+    } else if (type === 'breeze') {
+      // Calming forest breeze / swaying treetops
+      const breezeBuffer = createNoiseBuffer(ctx, 6, 'pink');
+      const breezeSource = ctx.createBufferSource();
+      breezeSource.buffer = breezeBuffer;
+      breezeSource.loop = true;
+
+      const breezeFilter1 = ctx.createBiquadFilter();
+      breezeFilter1.type = 'bandpass';
+      breezeFilter1.frequency.setValueAtTime(320, ctx.currentTime);
+      breezeFilter1.Q.setValueAtTime(1.8, ctx.currentTime);
+
+      const breezeFilter2 = ctx.createBiquadFilter();
+      breezeFilter2.type = 'bandpass';
+      breezeFilter2.frequency.setValueAtTime(680, ctx.currentTime);
+      breezeFilter2.Q.setValueAtTime(2.2, ctx.currentTime);
+
+      // Gentle LFO modulating wind sweep
+      const breezeLfo1 = ctx.createOscillator();
+      breezeLfo1.type = 'sine';
+      breezeLfo1.frequency.setValueAtTime(0.08, ctx.currentTime);
+
+      const breezeLfoGain1 = ctx.createGain();
+      breezeLfoGain1.gain.setValueAtTime(140, ctx.currentTime);
+
+      breezeLfo1.connect(breezeLfoGain1);
+      breezeLfoGain1.connect(breezeFilter1.frequency);
+
+      const breezeGainNode = ctx.createGain();
+      breezeGainNode.gain.setValueAtTime(0.9, ctx.currentTime);
+
+      breezeSource.connect(breezeFilter1);
+      breezeFilter1.connect(breezeGainNode);
+
+      breezeSource.connect(breezeFilter2);
+      breezeFilter2.connect(breezeGainNode);
+
+      breezeGainNode.connect(ambientGainNode);
+
+      breezeSource.start();
+      breezeLfo1.start();
+
+      ambientSourceNodes.push(breezeSource, breezeLfo1);
+
+    } else if (type === 'stream') {
+      // Gentle mountain stream / flowing water
+      const streamBuffer = createNoiseBuffer(ctx, 5, 'pink');
+      const streamSource = ctx.createBufferSource();
+      streamSource.buffer = streamBuffer;
+      streamSource.loop = true;
+
+      const streamFilter1 = ctx.createBiquadFilter();
+      streamFilter1.type = 'bandpass';
+      streamFilter1.frequency.setValueAtTime(480, ctx.currentTime);
+      streamFilter1.Q.setValueAtTime(3.2, ctx.currentTime);
+
+      const streamFilter2 = ctx.createBiquadFilter();
+      streamFilter2.type = 'bandpass';
+      streamFilter2.frequency.setValueAtTime(1100, ctx.currentTime);
+      streamFilter2.Q.setValueAtTime(3.6, ctx.currentTime);
+
+      // Micro ripple modulation
+      const rippleLfo = ctx.createOscillator();
+      rippleLfo.type = 'sine';
+      rippleLfo.frequency.setValueAtTime(1.4, ctx.currentTime);
+
+      const rippleGain = ctx.createGain();
+      rippleGain.gain.setValueAtTime(60, ctx.currentTime);
+
+      rippleLfo.connect(rippleGain);
+      rippleGain.connect(streamFilter2.frequency);
+
+      const streamGain = ctx.createGain();
+      streamGain.gain.setValueAtTime(0.85, ctx.currentTime);
+
+      streamSource.connect(streamFilter1);
+      streamFilter1.connect(streamGain);
+
+      streamSource.connect(streamFilter2);
+      streamFilter2.connect(streamGain);
+
+      streamGain.connect(ambientGainNode);
+
+      streamSource.start();
+      rippleLfo.start();
+
+      ambientSourceNodes.push(streamSource, rippleLfo);
     }
 
     currentAmbientType = type;
@@ -397,7 +687,7 @@
 
       setTimeout(() => {
         quoteText.innerHTML = `&ldquo;${escapeHTML(quote)}&rdquo;`;
-        quoteAuthor.textContent = `By ${randomWriting.author === 'friend' ? 'Friend' : 'Neerav'}`;
+        quoteAuthor.textContent = `By ${getAuthorDisplayName(randomWriting.author)}`;
         quoteTitleLink.textContent = `From \u201C${randomWriting.title}\u201D \u2192`;
         quoteTitleLink.dataset.quoteId = randomWriting.id;
 
@@ -613,7 +903,7 @@
       `<span class="card-tag" data-tag="${escapeHTML(t)}" title="Filter by #${escapeHTML(t)}">#${escapeHTML(t)}</span>`
     ).join(' ');
 
-    const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
+    const authorName = getAuthorDisplayName(writing.author);
     const authorBadge = `<span class="card-author">By ${authorName}</span>`;
 
     const dialogueBadge = writing.inResponseTo
@@ -844,8 +1134,23 @@
       return;
     }
 
+    const currentUser = getCurrentUser();
+    const isAuthor = (writing.author || 'neerav') === currentUser;
+
     const adminTools = $('#adminTools');
     if (adminTools) adminTools.hidden = false;
+
+    // Show Edit and Delete buttons only if the current user is the author
+    const btnEdit = $('#btnEdit');
+    const btnDelete = $('#btnDelete');
+    if (btnEdit) {
+      btnEdit.style.display = isAuthor ? 'flex' : 'none';
+      btnEdit.title = isAuthor ? 'Edit this writing' : 'Only the author can edit';
+    }
+    if (btnDelete) {
+      btnDelete.style.display = isAuthor ? 'flex' : 'none';
+      btnDelete.title = isAuthor ? 'Delete this writing' : 'Only the author can delete';
+    }
 
     // Update favorite button state
     const btnBookmark = $('#btnBookmarkReading');
@@ -885,7 +1190,7 @@
           <div class="literary-dialogue-banner reveal-up">
             <div class="dialogue-meta">
               <span class="dialogue-badge">Literary Dialogue</span>
-              <span class="dialogue-text">Written in response to <strong>&ldquo;${escapeHTML(parent.title)}&rdquo;</strong> by ${parent.author === 'friend' ? 'Friend' : 'Neerav'}</span>
+              <span class="dialogue-text">Written in response to <strong>&ldquo;${escapeHTML(parent.title)}&rdquo;</strong> by ${getAuthorDisplayName(parent.author)}</span>
             </div>
             <a href="#" class="dialogue-link" data-dialogue-target="${parent.id}">Read original piece &rarr;</a>
           </div>
@@ -903,7 +1208,7 @@
           <div class="dialogue-responses-grid">
             ${responses.map(r => `
               <div class="dialogue-response-card" data-dialogue-target="${r.id}" role="button" tabindex="0">
-                <span class="dialogue-response-author">By ${r.author === 'friend' ? 'Friend' : 'Neerav'}</span>
+                <span class="dialogue-response-author">By ${getAuthorDisplayName(r.author)}</span>
                 <h4 class="dialogue-response-title">&ldquo;${escapeHTML(r.title)}&rdquo;</h4>
                 <span class="dialogue-link" style="margin-top: 6px; display: inline-flex;">Read response &rarr;</span>
               </div>
@@ -933,13 +1238,13 @@
     }
 
     // Author Signature Wax Seal
-    const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
-    const sealClass = (writing.author === 'friend') ? 'wax-seal--friend' : 'wax-seal--neerav';
-    const sealEmblem = (writing.author === 'friend') ? '✦' : 'N';
-    const sealSignature = (writing.author === 'friend')
-      ? 'Written with heart by Friend'
+    const authorName = getAuthorDisplayName(writing.author);
+    const sealClass = isAvigna(writing.author) ? 'wax-seal--avigna' : 'wax-seal--neerav';
+    const sealEmblem = isAvigna(writing.author) ? '✦' : 'N';
+    const sealSignature = isAvigna(writing.author)
+      ? 'Written with heart by Avigna'
       : 'Written with care by Neerav';
-    const sealSubtitle = (writing.author === 'friend')
+    const sealSubtitle = isAvigna(writing.author)
       ? 'The Muse · The Archive'
       : 'The Archivist · The Archive';
 
@@ -1327,13 +1632,13 @@
     }
 
     // Author Seal & Signature
-    const authorName = (writing.author === 'friend') ? 'Friend' : 'Neerav';
-    const authorTitle = (writing.author === 'friend') ? 'The Muse' : 'The Archivist';
+    const authorName = getAuthorDisplayName(writing.author);
+    const authorTitle = isAvigna(writing.author) ? 'The Muse' : 'The Archivist';
 
     // Wax Seal circle
     ctx.beginPath();
     ctx.arc(width / 2, height - 250, 36, 0, Math.PI * 2);
-    ctx.fillStyle = (writing.author === 'friend') ? '#5A46A0' : '#7A2E33';
+    ctx.fillStyle = isAvigna(writing.author) ? '#5A46A0' : '#7A2E33';
     ctx.fill();
     ctx.strokeStyle = p.gold;
     ctx.lineWidth = 2;
@@ -1341,7 +1646,7 @@
 
     ctx.fillStyle = '#FFF';
     ctx.font = '700 28px "Cormorant Garamond", serif';
-    ctx.fillText((writing.author === 'friend') ? '✦' : 'N', width / 2, height - 250);
+    ctx.fillText(isAvigna(writing.author) ? '✦' : 'N', width / 2, height - 250);
 
     // Signature line
     ctx.font = '500 24px "Cormorant Garamond", Georgia, serif';
@@ -1623,7 +1928,7 @@
         entry.innerHTML = `
           <span class="timeline-entry-date">${formatDate(w.date)}</span>
           <h4 class="timeline-entry-title">${escapeHTML(w.title)}</h4>
-          <span class="timeline-entry-type">${escapeHTML(w.type)} · By ${w.author === 'friend' ? 'Friend' : 'Neerav'}</span>
+          <span class="timeline-entry-type">${escapeHTML(w.type)} · By ${getAuthorDisplayName(w.author)}</span>
         `;
         const handler = () => navigateTo('reading', w.id);
         entry.addEventListener('click', handler);
@@ -1666,14 +1971,14 @@
       deskStats.appendChild(div);
     });
 
-    const neeravWritings = writings.filter(w => (w.author || 'neerav') === 'neerav');
-    const friendWritings = writings.filter(w => w.author === 'friend');
+    const neeravWritings = writings.filter(w => !isAvigna(w.author));
+    const avignaWritings = writings.filter(w => isAvigna(w.author));
     const neeravWords = neeravWritings.reduce((sum, w) => sum + countWords(w.content), 0);
-    const friendWords = friendWritings.reduce((sum, w) => sum + countWords(w.content), 0);
+    const avignaWords = avignaWritings.reduce((sum, w) => sum + countWords(w.content), 0);
 
     const breakdown = [
       { count: `${neeravWritings.length} (${neeravWords.toLocaleString()} w)`, label: 'Neerav (The Archivist)' },
-      { count: `${friendWritings.length} (${friendWords.toLocaleString()} w)`, label: 'Friend (The Muse)' },
+      { count: `${avignaWritings.length} (${avignaWords.toLocaleString()} w)`, label: 'Avigna (The Muse)' },
       { count: writings.filter(w => w.type === 'poem').length, label: 'Poems' },
       { count: writings.filter(w => w.type === 'story').length, label: 'Stories' },
       { count: writings.filter(w => w.type === 'article').length, label: 'Articles' },
@@ -1760,21 +2065,26 @@
       .forEach(w => {
         const opt = document.createElement('option');
         opt.value = w.id;
-        opt.textContent = `"${w.title}" — by ${w.author === 'friend' ? 'Friend' : 'Neerav'}`;
+        opt.textContent = `"${w.title}" — by ${getAuthorDisplayName(w.author)}`;
         formInResponseTo.appendChild(opt);
       });
   }
 
   function openModal(writing = null) {
-    const lastAuthor = localStorage.getItem('last-author') || 'neerav';
     showStep(1);
     populateInResponseToOptions(writing ? writing.id : null);
 
     if (writing) {
+      if (!canUserEdit(writing.author)) {
+        const authorDisplayName = getAuthorDisplayName(writing.author);
+        alert(`🔒 Permission denied:\n\nOnly the author (${authorDisplayName}) can edit this piece.`);
+        return;
+      }
+
       modalTitle.textContent = 'Edit Writing';
       editingIdInput.value = writing.id;
       formTitle.value = writing.title || '';
-      formAuthor.value = writing.author || 'neerav';
+      formAuthor.value = isAvigna(writing.author) ? 'avigna' : 'neerav';
       formType.value = writing.type || 'poem';
       formDate.value = writing.date || new Date().toISOString().split('T')[0];
       formExcerpt.value = writing.excerpt || '';
@@ -1790,7 +2100,7 @@
       modalTitle.textContent = 'Add New Writing';
       writingForm.reset();
       editingIdInput.value = '';
-      formAuthor.value = lastAuthor;
+      formAuthor.value = getCurrentUser();
       formDate.value = new Date().toISOString().split('T')[0];
       formReadingTime.value = '2 min read';
       formFeatured.checked = false;
@@ -1879,8 +2189,19 @@
       e.preventDefault();
 
       const isEditing = Boolean(editingIdInput.value);
+
+      if (isEditing) {
+        const existing = getWritings().find(w => w.id === editingIdInput.value);
+        if (existing && !canUserEdit(existing.author)) {
+          const authorDisplayName = getAuthorDisplayName(existing.author);
+          alert(`🔒 Permission denied:\n\nOnly the author (${authorDisplayName}) can edit this piece.`);
+          return;
+        }
+      }
+
       const title = formTitle.value.trim();
-      const author = formAuthor.value || 'neerav';
+      const rawAuthor = formAuthor.value || getCurrentUser();
+      const author = isAvigna(rawAuthor) ? 'avigna' : 'neerav';
       localStorage.setItem('last-author', author);
       const type = formType.value;
       const date = formDate.value;
@@ -1967,7 +2288,7 @@
   }`;
 
       navigator.clipboard.writeText(snippet).then(() => {
-        alert('✨ Code snippet copied!\n\nYou can now:\n1. Paste it into data/writings.js\n2. Or share it with your friend');
+        alert('✨ Code snippet copied!\n\nYou can now:\n1. Paste it into data/writings.js\n2. Or share it with Avigna');
       }).catch(() => {
         prompt('Copy this code snippet:', snippet);
       });
@@ -2053,6 +2374,8 @@
       const enteredPassword = lockPassword.value.trim().toLowerCase();
 
       if (CORRECT_PASSWORDS.includes(enteredPassword)) {
+        const authorUser = PASSWORD_USERS[enteredPassword] || 'neerav';
+        setCurrentUser(authorUser);
         sessionStorage.setItem('archive-unlocked', 'true');
         lockError.hidden = true;
 
@@ -2125,6 +2448,27 @@
       if (popover) popover.hidden = false;
     });
 
+    // Try Ocean Waves button
+    $('#btnGuideTryWaves')?.addEventListener('click', () => {
+      playAmbientSound('waves');
+      const popover = $('#ambientPopover');
+      if (popover) popover.hidden = false;
+    });
+
+    // Try Forest Breeze button
+    $('#btnGuideTryBreeze')?.addEventListener('click', () => {
+      playAmbientSound('breeze');
+      const popover = $('#ambientPopover');
+      if (popover) popover.hidden = false;
+    });
+
+    // Try Gentle Stream button
+    $('#btnGuideTryStream')?.addEventListener('click', () => {
+      playAmbientSound('stream');
+      const popover = $('#ambientPopover');
+      if (popover) popover.hidden = false;
+    });
+
     // Open Write Canvas
     $('#btnGuideOpenWrite')?.addEventListener('click', () => {
       openModal();
@@ -2183,6 +2527,8 @@
   function init() {
     initLockScreen();
     initLockButton();
+    initUserBadge();
+    updateUserBadge();
     initTheme();
     initNav();
     initArchiveControls();

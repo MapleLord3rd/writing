@@ -121,6 +121,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 body {
@@ -274,10 +275,13 @@ input, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-md);
 }
 
 .nav-logo {
   z-index: 1001;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .nav-logo-text {
@@ -290,17 +294,20 @@ input, select {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: var(--sp-lg);
+  gap: clamp(0.6rem, 1.3vw, 1.25rem);
+  flex-shrink: 0;
 }
 
 .nav-link {
-  font-size: var(--fs-sm);
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
   transition: color var(--duration-fast);
   position: relative;
+  white-space: nowrap;
+  padding: 2px 0;
 }
 
 .nav-link::after {
@@ -322,6 +329,16 @@ input, select {
 .nav-link:hover::after,
 .nav-link.active::after {
   width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .nav-links {
+    gap: 0.65rem;
+  }
+  .nav-link {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+  }
 }
 
 /* Mobile nav toggle */
@@ -349,6 +366,42 @@ input, select {
 }
 .nav-toggle.open .nav-toggle-bar:nth-child(3) {
   transform: translateY(-6.5px) rotate(-45deg);
+}
+
+/* User profile indicator */
+.user-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-warm);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  margin-left: var(--sp-xs);
+  user-select: none;
+}
+
+.user-profile-badge:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.user-profile-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.user-profile-badge.user--friend .user-profile-dot,
+.user-profile-badge.user--avigna .user-profile-dot {
+  background: #7B68EE;
 }
 
 /* Theme toggle */
@@ -654,7 +707,7 @@ input, select {
 /* ---------- Writing Cards ---------- */
 .featured-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(500px, 100%), 1fr));
   gap: var(--sp-2xl);
 }
 
@@ -986,7 +1039,7 @@ input, select {
 /* Archive Grid */
 .archive-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(500px, 100%), 1fr));
   gap: var(--sp-2xl);
   margin-bottom: var(--sp-2xl);
 }
@@ -1710,8 +1763,13 @@ input, select {
 
   .featured-grid,
   .archive-grid,
-  .collections-grid {
+  .collections-grid,
+  .features-grid {
     grid-template-columns: 1fr;
+  }
+
+  .writing-card {
+    padding: var(--sp-lg) var(--sp-md);
   }
 
   .reading-nav {
@@ -2807,14 +2865,16 @@ input, select {
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-/* Friend Seal (Midnight & Starlight Muse Wax) */
-.wax-seal--friend {
+/* Avigna Seal (Midnight & Starlight Muse Wax) */
+.wax-seal--friend,
+.wax-seal--avigna {
   background: radial-gradient(circle at 35% 35%, #7B68EE, #3D2B7A);
   box-shadow: 0 4px 16px rgba(90, 70, 160, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
   border: 2px solid rgba(220, 200, 255, 0.4);
 }
 
-.wax-seal--friend .wax-emblem {
+.wax-seal--friend .wax-emblem,
+.wax-seal--avigna .wax-emblem {
   font-size: 1.4rem;
   color: #FFF2CC;
   text-shadow: 0 1px 3px rgba(0,0,0,0.6);
@@ -3330,7 +3390,7 @@ input, select {
 /* Features Grid */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(480px, 100%), 1fr));
   gap: var(--sp-xl);
   margin-bottom: var(--sp-3xl);
 }

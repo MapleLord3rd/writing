@@ -30,7 +30,7 @@
      title: 'Your Poem Title',
      type: 'poem',
      date: '2026-08-29',
-     author: 'neerav',  // or 'friend'
+     author: 'neerav',  // or 'avigna'
      excerpt: '"First line or a teaser..."',
      content: `Line one of your poem
 Line two preserves spacing exactly
@@ -131,6 +131,12 @@ I found you.`,
   //   ...
   // }
 ];
+
+/* ============================================================
+   DELETED WRITINGS (GLOBAL BLACKLIST)
+   Add IDs of any writings here to permanently remove them across all devices:
+   ============================================================ */
+const DELETED_WRITINGS = [];
 
 
 /* ============================================================
