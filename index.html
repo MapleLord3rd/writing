@@ -68,8 +68,11 @@
   <!-- Ambient Backdrop Overlay -->
   <div class="ambient-backdrop" id="ambientBackdrop" hidden></div>
 
-  <!-- Floating particles -->
-  <canvas id="particles" aria-hidden="true"></canvas>
+  <!-- Atmosphere Layer & Particle Engine -->
+  <div id="atmosphereLayer" class="atmosphere-layer" aria-hidden="true">
+    <canvas id="atmosphereCanvas" class="atmosphere-canvas"></canvas>
+    <div id="atmosphereElements" class="atmosphere-elements"></div>
+  </div>
 
   <!-- Navigation -->
   <nav class="nav" id="nav" role="navigation" aria-label="Main navigation">
@@ -91,9 +94,8 @@
         <a href="#" data-nav="desk" class="nav-link">Writer's Desk</a>
         <a href="#" data-nav="features" class="nav-link">Features & Guide</a>
         <a href="#" data-nav="about" class="nav-link">About</a>
-        <a href="#" data-nav="achievements" class="nav-link" style="font-weight:700;color:var(--gold);">Achievements</a>
         <div class="ambient-sound-control">
-          <button class="theme-toggle ambient-toggle-btn" id="ambientToggleBtn" title="Ambient Soundscapes" aria-label="Toggle ambient soundscapes">
+          <button class="theme-toggle ambient-toggle-btn" id="ambientToggleBtn" title="Mode Ambient Soundscapes" aria-label="Toggle mode ambient soundscapes" aria-haspopup="true">
             <svg class="ambient-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
               <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
@@ -102,19 +104,46 @@
           </button>
           <div class="ambient-popover" id="ambientPopover" hidden>
             <div class="ambient-popover-header">
-              <span>Ambient Sounds</span>
+              <span>Mode Ambient Sound</span>
             </div>
-            <div class="ambient-options">
-              <button type="button" class="ambient-opt active" data-sound="off">Off</button>
-              <button type="button" class="ambient-opt" data-sound="rain">🌧 Rain</button>
-              <button type="button" class="ambient-opt" data-sound="fire">🔥 Fireplace</button>
-              <button type="button" class="ambient-opt" data-sound="waves">🌊 Ocean Waves</button>
-              <button type="button" class="ambient-opt" data-sound="breeze">🍃 Forest Breeze</button>
-              <button type="button" class="ambient-opt" data-sound="stream">💧 Gentle Stream</button>
+            <div class="ambient-mode-card">
+              <span class="ambient-mode-badge" id="ambientCurrentModeLabel">🌑 Dark</span>
+              <p class="ambient-mode-desc">Calming generative soundscape matching active atmosphere.</p>
+            </div>
+            <div class="ambient-control-row">
+              <span class="ambient-control-label">Sound</span>
+              <button type="button" class="ambient-power-btn" id="ambientPowerBtn">OFF</button>
             </div>
             <div class="ambient-volume-row">
-              <input type="range" id="ambientVolume" min="0" max="1" step="0.05" value="0.4" aria-label="Ambient volume">
-              <span class="ambient-vol-label" id="ambientVolLabel">40%</span>
+              <span class="ambient-vol-icon" aria-hidden="true">🔉</span>
+              <input type="range" id="ambientVolume" min="0" max="1" step="0.05" value="0.35" aria-label="Ambient volume">
+              <span class="ambient-vol-label" id="ambientVolLabel">35%</span>
+            </div>
+          </div>
+        </div>
+        <!-- Atmosphere Mode Picker -->
+        <div class="mode-control">
+          <button class="mode-toggle-btn" id="btnModeSelector" title="Atmosphere Mode" aria-label="Select atmosphere mode" aria-haspopup="true">
+            <span class="mode-btn-icon">🌑</span>
+            <span class="mode-btn-label">Dark</span>
+          </button>
+          <div class="mode-popover" id="modePopover" hidden>
+            <div class="mode-popover-header">
+              <span class="mode-popover-title">Atmosphere Mode</span>
+            </div>
+            <div class="mode-options-grid">
+              <button type="button" class="mode-opt-btn active" data-mode="dark"><span class="mode-opt-icon">🌑</span><span class="mode-opt-name">Dark</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="magic"><span class="mode-opt-icon">✨</span><span class="mode-opt-name">Magic</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="forest"><span class="mode-opt-icon">🌲</span><span class="mode-opt-name">Forest</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="ocean"><span class="mode-opt-icon">🌊</span><span class="mode-opt-name">Ocean</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="sunset"><span class="mode-opt-icon">🌅</span><span class="mode-opt-name">Sunset</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="cosmos"><span class="mode-opt-icon">🌌</span><span class="mode-opt-name">Cosmos</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="rain"><span class="mode-opt-icon">🌧️</span><span class="mode-opt-name">Rain</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="autumn"><span class="mode-opt-icon">🍂</span><span class="mode-opt-name">Autumn</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="winter"><span class="mode-opt-icon">❄️</span><span class="mode-opt-name">Winter</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="sakura"><span class="mode-opt-icon">🌸</span><span class="mode-opt-name">Sakura</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="vintage"><span class="mode-opt-icon">📜</span><span class="mode-opt-name">Vintage</span></button>
+              <button type="button" class="mode-opt-btn" data-mode="midnight"><span class="mode-opt-icon">🌙</span><span class="mode-opt-name">Midnight</span></button>
             </div>
           </div>
         </div>
@@ -126,18 +155,6 @@
           <span class="user-profile-dot" id="userProfileDot"></span>
           <span class="user-profile-name" id="userProfileName">Neerav</span>
         </div>
-        <button class="theme-toggle" id="themeToggle" title="Theme Mode: Light / Dark / Magical" aria-label="Toggle theme mode">
-          <svg class="theme-icon theme-icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
-          <svg class="theme-icon theme-icon--moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-          <svg class="theme-icon theme-icon--magic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M15 4V2m0 16v-2m8-7h-2M4 11H2m15.5 5.5l-1.5-1.5M6 6L4.5 4.5m0 13L6 16m11.5-11.5L16 6"/>
-            <path d="m3 21 9-9m3-3 2-2a2.828 2.828 0 1 0-4-4l-2 2"/>
-          </svg>
-        </button>
         <button class="theme-toggle" id="lockArchiveBtn" title="Lock the Archive" aria-label="Lock archive">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -409,7 +426,6 @@
       <!-- Features Category Tabs -->
       <div class="features-categories" role="tablist" aria-label="Filter features by category">
         <button class="feature-category-btn active" data-feature-cat="all" role="tab" aria-selected="true">All Features</button>
-        <button class="feature-category-btn" data-feature-cat="magic" role="tab" aria-selected="false">✨ Magical Mode</button>
         <button class="feature-category-btn" data-feature-cat="audio" role="tab" aria-selected="false">🎧 Ambient Audio</button>
         <button class="feature-category-btn" data-feature-cat="reading" role="tab" aria-selected="false">📖 Reading Tools</button>
         <button class="feature-category-btn" data-feature-cat="export" role="tab" aria-selected="false">🎨 Postcards & Export</button>
@@ -420,36 +436,7 @@
       <!-- Features Grid -->
       <div class="features-grid">
 
-        <!-- 0. Magical Mode & Curtain Reveal -->
-        <article class="feature-card" data-category="magic">
-          <div class="feature-card-header">
-            <div class="feature-icon-wrapper">
-              <span class="feature-icon">✨</span>
-            </div>
-            <div class="feature-meta">
-              <span class="feature-category-tag">Enchanted Experience</span>
-              <h3 class="feature-title">Magical Mode &amp; Velvet Curtain Reveal</h3>
-            </div>
-          </div>
-          <p class="feature-desc">
-            Transform The Archive into an ethereal, cosmic wonderland with twilight starlight backgrounds, luminous golden particles, and luxurious velvet curtains over every writing card that smoothly part when you hover over them.
-          </p>
-          <div class="feature-instructions">
-            <h4 class="instructions-heading">How to Use:</h4>
-            <ol class="instructions-list">
-              <li><span class="step-num">1</span> Click the <strong>Theme Toggle button</strong> in the top navigation bar to cycle to <strong class="guide-tag">✨ Magical Mode</strong>.</li>
-              <li><span class="step-num">2</span> Watch the background transform into a celestial starfield with shimmering stardust particles.</li>
-              <li><span class="step-num">3</span> <strong>Velvet Curtains:</strong> Browse the Home or Archive page — each card is draped with a velvet curtain and glowing seal.</li>
-              <li><span class="step-num">4</span> Hover your cursor over any card (or tap on mobile) to watch the curtains glide open with a golden starlight burst!</li>
-            </ol>
-          </div>
-          <div class="feature-card-footer">
-            <button type="button" class="feature-action-btn" id="btnGuideToggleMagic">✨ Switch to Magical Mode</button>
-            <a href="#" class="feature-action-btn link-action" data-nav="archive">Explore Archive Curtains &rarr;</a>
-          </div>
-        </article>
-
-        <!-- 1. Ambient Soundscapes -->
+        <!-- Ambient Soundscapes -->
         <article class="feature-card" data-category="audio">
           <div class="feature-card-header">
             <div class="feature-icon-wrapper">
@@ -824,19 +811,6 @@
 
         <div class="intro-divider" aria-hidden="true"><span>✦</span></div>
       </div>
-    </div>
-  </section>
-
-  <!-- ==================== ACHIEVEMENTS ==================== -->
-  <section class="page page--achievements" id="page-achievements">
-    <div class="container">
-      <div class="archive-header reveal-up">
-        <span class="section-label">Your Journey</span>
-        <h2 class="page-title">Achievements</h2>
-        <p class="page-desc">Keep writing. There is always another one.</p>
-      </div>
-      <div id="achievementSummary" class="achievement-summary"></div>
-      <div id="achievementList" class="achievement-grid"></div>
     </div>
   </section>
 
@@ -1240,13 +1214,10 @@ Write freely just as you would in a journal.
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data/writings.js?v=2.6"></script>
-  <!-- Achievement Popup -->
-  <div id="achievementPopup" class="achievement-popup" hidden aria-live="polite">
-    <div class="popup-inner"><span class="popup-badge">✦</span><h3 class="popup-title">Unlocked!</h3><p class="popup-desc"></p></div>
-  </div>
-
-  <script src="js/validation.js"></script>
-  <script src="js/achievements.js"></script>
+  <!-- Atmosphere & Theme Engine -->
+  <script src="js/atmosphere.js?v=1.0"></script>
+  <!-- Ambient Audio Engine -->
+  <script src="js/audio.js?v=1.0"></script>
   <script src="js/app.js?v=2.6"></script>
 </body>
 </html>

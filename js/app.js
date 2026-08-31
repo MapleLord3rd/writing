@@ -784,7 +784,6 @@
   const nav = $('#nav');
   const navToggle = $('#navToggle');
   const navLinks = $('#navLinks');
-  const themeToggle = $('#themeToggle');
   const readingProgress = $('#readingProgress');
   const readingProgressBar = $('#readingProgressBar');
   const searchInput = $('#searchInput');
@@ -803,7 +802,6 @@
   const deskStats = $('#deskStats');
   const deskBreakdown = $('#deskBreakdown');
   const readingContent = $('#readingContent');
-  const particlesCanvas = $('#particles');
 
   // ——— Helpers ———
   function formatDate(dateStr) {
@@ -844,379 +842,6 @@
       clearTimeout(timer);
       timer = setTimeout(() => fn.apply(this, args), delay);
     };
-  }
-
-  // ——— Web Audio API Ambient Soundscapes ———
-  let audioCtx = null;
-  let ambientGainNode = null;
-  let currentAmbientType = 'off';
-  let ambientSourceNodes = [];
-  let ambientInterval = null;
-
-  function getAudioContext() {
-    if (!audioCtx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) {
-        audioCtx = new AudioContextClass();
-      }
-    }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-    return audioCtx;
-  }
-
-  function stopAmbientSound() {
-    ambientSourceNodes.forEach(node => {
-      try { node.stop(); } catch (e) {}
-      try { node.disconnect(); } catch (e) {}
-    });
-    ambientSourceNodes = [];
-    if (ambientInterval) {
-      clearInterval(ambientInterval);
-      ambientInterval = null;
-    }
-    currentAmbientType = 'off';
-    const dot = $('#ambientStatusDot');
-    const toggleBtn = $('#ambientToggleBtn');
-    const aura = $('#ambientAura');
-    if (toggleBtn) toggleBtn.classList.remove('playing');
-    if (aura) aura.classList.remove('playing');
-    if (dot) dot.style.opacity = '0';
-    $$('.ambient-opt').forEach(opt => opt.classList.toggle('active', opt.dataset.sound === 'off'));
-  }
-
-  function createNoiseBuffer(ctx, duration = 5, type = 'pink') {
-    const bufferSize = ctx.sampleRate * duration;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      if (type === 'pink') {
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
-        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.10;
-        b6 = white * 0.115926;
-      } else {
-        // Brown noise - deep, warm, smooth
-        b0 = (b0 + (0.018 * white)) / 1.018;
-        data[i] = b0 * 2.8;
-      }
-    }
-    return buffer;
-  }
-
-  function playAmbientSound(type) {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    stopAmbientSound();
-
-    if (type === 'off') return;
-
-    if (!ambientGainNode) {
-      ambientGainNode = ctx.createGain();
-      const volInput = $('#ambientVolume');
-      ambientGainNode.gain.setValueAtTime(volInput ? parseFloat(volInput.value) : 0.38, ctx.currentTime);
-      ambientGainNode.connect(ctx.destination);
-    }
-
-    if (type === 'rain') {
-      // Calming, gentle summer rainfall (soft warm lowpass, no harsh treble hiss)
-      const rainBuffer = createNoiseBuffer(ctx, 6, 'pink');
-      const rainSource = ctx.createBufferSource();
-      rainSource.buffer = rainBuffer;
-      rainSource.loop = true;
-
-      const rainFilter = ctx.createBiquadFilter();
-      rainFilter.type = 'lowpass';
-      rainFilter.frequency.setValueAtTime(320, ctx.currentTime);
-      rainFilter.Q.setValueAtTime(1.0, ctx.currentTime);
-
-      const highCut = ctx.createBiquadFilter();
-      highCut.type = 'highshelf';
-      highCut.frequency.setValueAtTime(2400, ctx.currentTime);
-      highCut.gain.setValueAtTime(-14, ctx.currentTime);
-
-      // Gentle slow wind shift across the rain
-      const rainLfo = ctx.createOscillator();
-      rainLfo.type = 'sine';
-      rainLfo.frequency.setValueAtTime(0.06, ctx.currentTime);
-      const rainLfoGain = ctx.createGain();
-      rainLfoGain.gain.setValueAtTime(80, ctx.currentTime);
-      rainLfo.connect(rainLfoGain);
-      rainLfoGain.connect(rainFilter.frequency);
-
-      rainSource.connect(rainFilter);
-      rainFilter.connect(highCut);
-      highCut.connect(ambientGainNode);
-      rainSource.start();
-      rainLfo.start();
-      ambientSourceNodes.push(rainSource, rainLfo);
-
-    } else if (type === 'fire') {
-      // Warm, cozy fireside hearth (deep soothing rumble + soft, gentle organic embers)
-      const rumbleBuffer = createNoiseBuffer(ctx, 6, 'brown');
-      const rumbleSource = ctx.createBufferSource();
-      rumbleSource.buffer = rumbleBuffer;
-      rumbleSource.loop = true;
-
-      const rumbleFilter = ctx.createBiquadFilter();
-      rumbleFilter.type = 'lowpass';
-      rumbleFilter.frequency.setValueAtTime(110, ctx.currentTime);
-      rumbleFilter.Q.setValueAtTime(1.2, ctx.currentTime);
-
-      rumbleSource.connect(rumbleFilter);
-      rumbleFilter.connect(ambientGainNode);
-      rumbleSource.start();
-      ambientSourceNodes.push(rumbleSource);
-
-      // Soft, tranquil ember crackles (spaced out, smooth cosine envelope, gentle volume)
-      ambientInterval = setInterval(() => {
-        if (Math.random() > 0.62 && audioCtx && audioCtx.state === 'running') {
-          const len = Math.floor(ctx.sampleRate * 0.035);
-          const crackleBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
-          const data = crackleBuffer.getChannelData(0);
-          for (let j = 0; j < len; j++) {
-            const env = Math.sin((j / len) * Math.PI);
-            data[j] = (Math.random() * 2 - 1) * env * Math.exp(-j / (len * 0.4));
-          }
-          const crackleSource = ctx.createBufferSource();
-          crackleSource.buffer = crackleBuffer;
-
-          const crackleFilter = ctx.createBiquadFilter();
-          crackleFilter.type = 'bandpass';
-          crackleFilter.frequency.setValueAtTime(950 + Math.random() * 1100, ctx.currentTime);
-          crackleFilter.Q.setValueAtTime(2.0, ctx.currentTime);
-
-          const crackleGain = ctx.createGain();
-          crackleGain.gain.setValueAtTime(0.12 + Math.random() * 0.16, ctx.currentTime);
-
-          crackleSource.connect(crackleFilter);
-          crackleFilter.connect(crackleGain);
-          crackleGain.connect(ambientGainNode);
-          crackleSource.start();
-        }
-      }, 550);
-
-    } else if (type === 'waves') {
-      // Hypnotic ocean swell & deep tidal breath
-      const waveBuffer = createNoiseBuffer(ctx, 8, 'pink');
-      const waveSource = ctx.createBufferSource();
-      waveSource.buffer = waveBuffer;
-      waveSource.loop = true;
-
-      const waveFilter = ctx.createBiquadFilter();
-      waveFilter.type = 'lowpass';
-      waveFilter.frequency.setValueAtTime(280, ctx.currentTime);
-      waveFilter.Q.setValueAtTime(1.4, ctx.currentTime);
-
-      // Primary slow ocean tide LFO (~14s cycle)
-      const waveLfo = ctx.createOscillator();
-      waveLfo.type = 'sine';
-      waveLfo.frequency.setValueAtTime(0.07, ctx.currentTime);
-
-      const waveLfoGain = ctx.createGain();
-      waveLfoGain.gain.setValueAtTime(180, ctx.currentTime);
-      waveLfo.connect(waveLfoGain);
-      waveLfoGain.connect(waveFilter.frequency);
-
-      // Swell volume modulation
-      const waveGain = ctx.createGain();
-      waveGain.gain.setValueAtTime(0.48, ctx.currentTime);
-
-      const swellLfo = ctx.createOscillator();
-      swellLfo.type = 'sine';
-      swellLfo.frequency.setValueAtTime(0.07, ctx.currentTime);
-
-      const swellGain = ctx.createGain();
-      swellGain.gain.setValueAtTime(0.32, ctx.currentTime);
-
-      swellLfo.connect(swellGain);
-      swellGain.connect(waveGain.gain);
-
-      waveSource.connect(waveFilter);
-      waveFilter.connect(waveGain);
-      waveGain.connect(ambientGainNode);
-
-      waveSource.start();
-      waveLfo.start();
-      swellLfo.start();
-
-      ambientSourceNodes.push(waveSource, waveLfo, swellLfo);
-
-    } else if (type === 'breeze') {
-      // Peaceful forest canopy & meditative harmonic wind chimes
-      const breezeBuffer = createNoiseBuffer(ctx, 8, 'pink');
-      const breezeSource = ctx.createBufferSource();
-      breezeSource.buffer = breezeBuffer;
-      breezeSource.loop = true;
-
-      const breezeFilter = ctx.createBiquadFilter();
-      breezeFilter.type = 'bandpass';
-      breezeFilter.frequency.setValueAtTime(260, ctx.currentTime);
-      breezeFilter.Q.setValueAtTime(1.2, ctx.currentTime);
-
-      const breezeLfo = ctx.createOscillator();
-      breezeLfo.type = 'sine';
-      breezeLfo.frequency.setValueAtTime(0.05, ctx.currentTime);
-
-      const breezeLfoGain = ctx.createGain();
-      breezeLfoGain.gain.setValueAtTime(110, ctx.currentTime);
-      breezeLfo.connect(breezeLfoGain);
-      breezeLfoGain.connect(breezeFilter.frequency);
-
-      const breezeGain = ctx.createGain();
-      breezeGain.gain.setValueAtTime(0.65, ctx.currentTime);
-
-      breezeSource.connect(breezeFilter);
-      breezeFilter.connect(breezeGain);
-      breezeGain.connect(ambientGainNode);
-
-      breezeSource.start();
-      breezeLfo.start();
-      ambientSourceNodes.push(breezeSource, breezeLfo);
-
-      // Pentatonic wind chimes (serene, soft sine tones fading gently)
-      const chimePitches = [587.33, 659.25, 783.99, 880.00, 1046.50]; // D5, E5, G5, A5, C6
-      ambientInterval = setInterval(() => {
-        if (Math.random() > 0.45 && audioCtx && audioCtx.state === 'running') {
-          const freq = chimePitches[Math.floor(Math.random() * chimePitches.length)];
-          const chimeOsc = ctx.createOscillator();
-          chimeOsc.type = 'sine';
-          chimeOsc.frequency.setValueAtTime(freq, ctx.currentTime);
-
-          const chimeGain = ctx.createGain();
-          const now = ctx.currentTime;
-          chimeGain.gain.setValueAtTime(0.0001, now);
-          chimeGain.gain.linearRampToValueAtTime(0.07, now + 0.04);
-          chimeGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
-
-          chimeOsc.connect(chimeGain);
-          chimeGain.connect(ambientGainNode);
-
-          chimeOsc.start(now);
-          chimeOsc.stop(now + 2.9);
-        }
-      }, 2200);
-
-    } else if (type === 'stream') {
-      // Gentle mountain stream / clear spring water flowing over smooth stones
-      const streamBuffer = createNoiseBuffer(ctx, 6, 'pink');
-      const streamSource = ctx.createBufferSource();
-      streamSource.buffer = streamBuffer;
-      streamSource.loop = true;
-
-      const streamFilter1 = ctx.createBiquadFilter();
-      streamFilter1.type = 'bandpass';
-      streamFilter1.frequency.setValueAtTime(360, ctx.currentTime);
-      streamFilter1.Q.setValueAtTime(2.2, ctx.currentTime);
-
-      const streamFilter2 = ctx.createBiquadFilter();
-      streamFilter2.type = 'bandpass';
-      streamFilter2.frequency.setValueAtTime(780, ctx.currentTime);
-      streamFilter2.Q.setValueAtTime(2.8, ctx.currentTime);
-
-      // Soft water ripple oscillation
-      const rippleLfo = ctx.createOscillator();
-      rippleLfo.type = 'sine';
-      rippleLfo.frequency.setValueAtTime(0.7, ctx.currentTime);
-
-      const rippleGain = ctx.createGain();
-      rippleGain.gain.setValueAtTime(45, ctx.currentTime);
-      rippleLfo.connect(rippleGain);
-      rippleGain.connect(streamFilter2.frequency);
-
-      const streamGain = ctx.createGain();
-      streamGain.gain.setValueAtTime(0.68, ctx.currentTime);
-
-      streamSource.connect(streamFilter1);
-      streamFilter1.connect(streamGain);
-      streamSource.connect(streamFilter2);
-      streamFilter2.connect(streamGain);
-      streamGain.connect(ambientGainNode);
-
-      streamSource.start();
-      rippleLfo.start();
-      ambientSourceNodes.push(streamSource, rippleLfo);
-    }
-
-    currentAmbientType = type;
-    const toggleBtn = $('#ambientToggleBtn');
-    const dot = $('#ambientStatusDot');
-    const aura = $('#ambientAura');
-    if (toggleBtn) toggleBtn.classList.add('playing');
-    if (aura) aura.classList.add('playing');
-    if (dot) dot.style.opacity = '1';
-    $$('.ambient-opt').forEach(opt => opt.classList.toggle('active', opt.dataset.sound === type));
-  }
-
-  function initAmbientSound() {
-    // Skip ambient sound init on mobile to conserve battery/CPU
-    if (window.innerWidth <= 768) return;
-
-    const toggleBtn = $('#ambientToggleBtn');
-    const popover = $('#ambientPopover');
-    const backdrop = $('#ambientBackdrop');
-    const volumeSlider = $('#ambientVolume');
-    const volumeLabel = $('#ambientVolLabel');
-
-    if (!toggleBtn || !popover) return;
-
-    function openPopover() {
-      popover.hidden = false;
-      if (backdrop) backdrop.hidden = false;
-    }
-
-    function closePopover() {
-      popover.hidden = true;
-      if (backdrop) backdrop.hidden = true;
-    }
-
-    toggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (popover.hidden) {
-        openPopover();
-      } else {
-        closePopover();
-      }
-    });
-
-    if (backdrop) {
-      backdrop.addEventListener('click', () => {
-        closePopover();
-      });
-    }
-
-    document.addEventListener('click', (e) => {
-      if (!popover.contains(e.target) && e.target !== toggleBtn) {
-        closePopover();
-      }
-    });
-
-    $$('.ambient-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sound = btn.dataset.sound;
-        playAmbientSound(sound);
-      });
-    });
-
-    if (volumeSlider) {
-      volumeSlider.addEventListener('input', (e) => {
-        const val = parseFloat(e.target.value);
-        if (ambientGainNode && audioCtx) {
-          ambientGainNode.gain.setValueAtTime(val, audioCtx.currentTime);
-        }
-        if (volumeLabel) {
-          volumeLabel.textContent = Math.round(val * 100) + '%';
-        }
-      });
-    }
   }
 
   // ——— Excerpt / Quote of the Day ———
@@ -1274,131 +899,6 @@
         e.preventDefault();
         const id = quoteTitleLink.dataset.quoteId;
         if (id) navigateTo('reading', id);
-      });
-    }
-  }
-
-  // ——— Particles ———
-  function initParticles() {
-    if (!particlesCanvas) return;
-
-    // Skip canvas animation on mobile screens or when reduced motion is preferred to conserve CPU/battery
-    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion || window.innerWidth <= 768) {
-      particlesCanvas.style.display = 'none';
-      return;
-    }
-
-    const ctx = particlesCanvas.getContext('2d');
-    if (!ctx) return;
-    let particles = [];
-    const count = Math.min(30, Math.floor(window.innerWidth / 40));
-    let animationFrameId = null;
-    let isPaused = false;
-
-    function resize() {
-      if (window.innerWidth <= 768) {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        particlesCanvas.style.display = 'none';
-        return;
-      }
-      particlesCanvas.style.display = 'block';
-      particlesCanvas.width = window.innerWidth;
-      particlesCanvas.height = window.innerHeight;
-    }
-    resize();
-    window.addEventListener('resize', debounce(resize, 200), { passive: true });
-
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * particlesCanvas.width,
-        y: Math.random() * particlesCanvas.height,
-        r: Math.random() * 1.5 + 0.3,
-        dx: (Math.random() - 0.5) * 0.2,
-        dy: (Math.random() - 0.5) * 0.15,
-        opacity: Math.random() * 0.3 + 0.05
-      });
-    }
-
-    function draw() {
-      if (isPaused) return;
-      ctx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
-      const theme = document.documentElement.dataset.theme || 'light';
-      const isMagical = theme === 'magical';
-      const isDark = theme === 'dark';
-
-      for (const p of particles) {
-        p.x += p.dx;
-        p.y += p.dy;
-        if (p.x < 0) p.x = particlesCanvas.width;
-        if (p.x > particlesCanvas.width) p.x = 0;
-        if (p.y < 0) p.y = particlesCanvas.height;
-        if (p.y > particlesCanvas.height) p.y = 0;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, isMagical ? p.r * 1.25 : p.r, 0, Math.PI * 2);
-
-        if (isMagical) {
-          // Celestial stardust glow in magical mode
-          const palette = ['246, 211, 137', '232, 121, 249', '255, 255, 255', '196, 181, 253'];
-          const color = palette[Math.floor((p.x + p.y) % palette.length)];
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = `rgba(${color}, 0.7)`;
-          ctx.fillStyle = `rgba(${color}, ${Math.min(0.85, p.opacity * 1.8)})`;
-        } else {
-          ctx.shadowBlur = 0;
-          const color = isDark ? '232, 226, 214' : '44, 44, 44';
-          ctx.fillStyle = `rgba(${color}, ${p.opacity})`;
-        }
-        ctx.fill();
-      }
-      if (isMagical) {
-        ctx.shadowBlur = 0;
-      }
-      animationFrameId = requestAnimationFrame(draw);
-    }
-    draw();
-
-    // Pause particle animation loop when tab is backgrounded
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        isPaused = true;
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      } else if (isPaused && window.innerWidth > 768) {
-        isPaused = false;
-        draw();
-      }
-    });
-  }
-
-  // ——— Theme (Light / Dark / Magical) ———
-  function initTheme() {
-    const saved = localStorage.getItem('archive-theme');
-    if (saved && ['light', 'dark', 'magical'].includes(saved)) {
-      document.documentElement.dataset.theme = saved;
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.documentElement.dataset.theme = 'dark';
-    }
-
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const current = document.documentElement.dataset.theme || 'light';
-        let next = 'dark';
-        if (current === 'light') {
-          next = 'dark';
-        } else if (current === 'dark') {
-          next = 'magical';
-        } else {
-          next = 'light';
-        }
-
-        document.documentElement.dataset.theme = next;
-        localStorage.setItem('archive-theme', next);
-        // Trigger curtain close animation once on magical switch
-        if (next === 'magical') {
-          document.querySelectorAll('.card-curtain-wrapper').forEach(w => w.classList.add('animated'));
-          setTimeout(() => document.querySelectorAll('.card-curtain-wrapper').forEach(w => w.classList.remove('animated')), 1000);
-        }
       });
     }
   }
@@ -1522,10 +1022,6 @@
       case 'about':
         $('#page-about').classList.add('active');
         break;
-      case 'achievements':
-        $('#page-achievements').classList.add('active');
-        if (typeof fillAchievements === 'function') fillAchievements();
-        break;
     }
 
     requestAnimationFrame(() => {
@@ -1567,15 +1063,6 @@
     `;
 
     card.innerHTML = `
-      <div class="card-curtain-wrapper" aria-hidden="true">
-        <div class="card-curtain-left"></div>
-        <div class="card-curtain-right"></div>
-        <div class="card-curtain-seal">
-          <span class="curtain-seal-icon">✦</span>
-          <span class="curtain-seal-label">Reveal Poem</span>
-          <span class="curtain-seal-sparkle">✨</span>
-        </div>
-      </div>
       ${bookmarkBtnHtml}
       <div class="card-meta">
         <span class="card-type">${escapeHTML(writing.type)}</span>
@@ -3565,35 +3052,24 @@
 
     // Try Rain button
     $('#btnGuideTryRain')?.addEventListener('click', () => {
-      playAmbientSound('rain');
+      window.AtmosphereEngine?.applyWebsiteMode?.('rain');
+      window.AmbientAudioManager?.toggle(true);
       const popover = $('#ambientPopover');
       if (popover) popover.hidden = false;
     });
 
-    // Try Fire button
-    $('#btnGuideTryFire')?.addEventListener('click', () => {
-      playAmbientSound('fire');
+    // Try Forest button
+    $('#btnGuideTryBreeze')?.addEventListener('click', () => {
+      window.AtmosphereEngine?.applyWebsiteMode?.('forest');
+      window.AmbientAudioManager?.toggle(true);
       const popover = $('#ambientPopover');
       if (popover) popover.hidden = false;
     });
 
     // Try Ocean Waves button
     $('#btnGuideTryWaves')?.addEventListener('click', () => {
-      playAmbientSound('waves');
-      const popover = $('#ambientPopover');
-      if (popover) popover.hidden = false;
-    });
-
-    // Try Forest Breeze button
-    $('#btnGuideTryBreeze')?.addEventListener('click', () => {
-      playAmbientSound('breeze');
-      const popover = $('#ambientPopover');
-      if (popover) popover.hidden = false;
-    });
-
-    // Try Gentle Stream button
-    $('#btnGuideTryStream')?.addEventListener('click', () => {
-      playAmbientSound('stream');
+      window.AtmosphereEngine?.applyWebsiteMode?.('ocean');
+      window.AmbientAudioManager?.toggle(true);
       const popover = $('#ambientPopover');
       if (popover) popover.hidden = false;
     });
@@ -3660,13 +3136,10 @@
     updateUserBadge();
     initProfileModal();
     updateBookmarksCount();
-    initTheme();
     initNav();
     initArchiveControls();
     initAdmin();
     initKeyboard();
-    initParticles();
-    initAmbientSound();
     initReaderCustomizer();
     initPostcardModal();
     initZenMode();
