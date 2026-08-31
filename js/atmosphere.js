@@ -962,7 +962,7 @@
       this.effectRenderers.cosmosSpace = {
         init: (engine) => {
           const isMobile = engine.width <= 768;
-          const starCount = isMobile ? 45 : 85;
+          const starCount = isMobile ? 150 : 300;
           engine.particles = [];
           engine.meteors = [];
           engine.meteorSparks = [];
@@ -976,7 +976,7 @@
               y: Math.random() * engine.height,
               r: depth > 0.85 ? Math.random() * 1.6 + 1.1 : Math.random() * 0.9 + 0.4,
               depth,
-              dx: (depth * 0.04 + 0.01), // subtle slow cosmic drift
+              dx: (depth * 0.15 + 0.03), // subtle slow cosmic drift
               twinkleSpeed: Math.random() * 1.5 + 0.5,
               twinkleOffset: Math.random() * Math.PI * 2,
               hasFlare: depth > 0.90
@@ -985,15 +985,15 @@
 
           // 2. Large Realistic Asteroids with Pseudo-Fixed Majestic Orbital Drifting
           const asteroidConfigs = isMobile ? [
-            { anchorXRatio: 0.15, anchorYRatio: 0.22, baseRadius: 48, orbitRx: 28, orbitRy: 18, orbitSpeed: 0.045, rotSpeed: 0.005, isLarge: true },
-            { anchorXRatio: 0.85, anchorYRatio: 0.68, baseRadius: 36, orbitRx: 30, orbitRy: 20, orbitSpeed: 0.035, rotSpeed: -0.007, isLarge: true },
-            { anchorXRatio: 0.70, anchorYRatio: 0.15, baseRadius: 22, orbitRx: 20, orbitRy: 14, orbitSpeed: 0.060, rotSpeed: 0.009, isLarge: false }
+            { anchorXRatio: 0.15, anchorYRatio: 0.22, baseRadius: 28, orbitRx: 28, orbitRy: 18, orbitSpeed: 0.08, rotSpeed: 0.005, isLarge: true },
+            { anchorXRatio: 0.85, anchorYRatio: 0.68, baseRadius: 22, orbitRx: 30, orbitRy: 20, orbitSpeed: 0.06, rotSpeed: -0.007, isLarge: true },
+            { anchorXRatio: 0.70, anchorYRatio: 0.15, baseRadius: 14, orbitRx: 20, orbitRy: 14, orbitSpeed: 0.10, rotSpeed: 0.009, isLarge: false }
           ] : [
-            { anchorXRatio: 0.14, anchorYRatio: 0.24, baseRadius: 84, orbitRx: 55, orbitRy: 35, orbitSpeed: 0.038, rotSpeed: 0.004, isLarge: true },
-            { anchorXRatio: 0.86, anchorYRatio: 0.65, baseRadius: 65, orbitRx: 45, orbitRy: 28, orbitSpeed: 0.030, rotSpeed: -0.006, isLarge: true },
-            { anchorXRatio: 0.72, anchorYRatio: 0.18, baseRadius: 42, orbitRx: 35, orbitRy: 22, orbitSpeed: 0.050, rotSpeed: 0.008, isLarge: true },
-            { anchorXRatio: 0.32, anchorYRatio: 0.82, baseRadius: 28, orbitRx: 30, orbitRy: 18, orbitSpeed: 0.042, rotSpeed: -0.010, isLarge: false },
-            { anchorXRatio: 0.52, anchorYRatio: 0.08, baseRadius: 20, orbitRx: 25, orbitRy: 15, orbitSpeed: 0.065, rotSpeed: 0.012, isLarge: false }
+            { anchorXRatio: 0.14, anchorYRatio: 0.24, baseRadius: 50, orbitRx: 55, orbitRy: 35, orbitSpeed: 0.07, rotSpeed: 0.004, isLarge: true },
+            { anchorXRatio: 0.86, anchorYRatio: 0.40, baseRadius: 40, orbitRx: 45, orbitRy: 28, orbitSpeed: 0.05, rotSpeed: -0.006, isLarge: true },
+            { anchorXRatio: 0.72, anchorYRatio: 0.18, baseRadius: 25, orbitRx: 35, orbitRy: 22, orbitSpeed: 0.08, rotSpeed: 0.008, isLarge: true },
+            { anchorXRatio: 0.32, anchorYRatio: 0.82, baseRadius: 18, orbitRx: 30, orbitRy: 18, orbitSpeed: 0.08, rotSpeed: -0.010, isLarge: false },
+            { anchorXRatio: 0.52, anchorYRatio: 0.08, baseRadius: 12, orbitRx: 25, orbitRy: 15, orbitSpeed: 0.10, rotSpeed: 0.012, isLarge: false }
           ];
 
           engine.asteroids = asteroidConfigs.map((cfg, idx) => {
@@ -1067,6 +1067,8 @@
             const p = engine.particles[i];
             p.x += p.dx;
             if (p.x > engine.width + 5) p.x = -5;
+            p.y += 0.03;
+            if (p.y > engine.height + 5) p.y = -5;
 
             const twinkle = Math.pow(Math.sin(time * p.twinkleSpeed + p.twinkleOffset), 4);
             const currentOpacity = 0.2 + 0.8 * twinkle;
@@ -1085,7 +1087,7 @@
               const len = p.r * 2.8;
               ctx.beginPath();
               ctx.moveTo(p.x - len, p.y);
-              ctx.lineTo(p.x + len);
+              ctx.lineTo(p.x + len, p.y);
               ctx.moveTo(p.x, p.y - len);
               ctx.lineTo(p.x, p.y + len);
               ctx.stroke();
