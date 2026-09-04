@@ -3415,12 +3415,13 @@
 
       // Canvas pointer interactions
       canvas.addEventListener('mousedown', onPointerDown);
-      window.addEventListener('mousemove', onPointerMove);
+      canvas.addEventListener('mousemove', onPointerMove);
       window.addEventListener('mouseup', onPointerUp);
 
       canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-      window.addEventListener('touchmove', onTouchMove, { passive: false });
-      window.addEventListener('touchend', onTouchEnd);
+      canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+      canvas.addEventListener('touchend', onTouchEnd);
+      canvas.addEventListener('touchcancel', onTouchEnd);
 
       canvas.addEventListener('wheel', onWheel, { passive: false });
       window.addEventListener('resize', onResize);
@@ -3717,7 +3718,7 @@
     }
 
     function onTouchStart(e) {
-      if (!canvas) return;
+      if (!canvas || !isRunning) return;
       const rect = canvas.getBoundingClientRect();
       if (e.touches.length === 1) {
         const sx = e.touches[0].clientX - rect.left;
@@ -3743,20 +3744,22 @@
     }
 
     function onTouchMove(e) {
-      if (!canvas) return;
+      if (!canvas || !isRunning) return;
       const rect = canvas.getBoundingClientRect();
       if (e.touches.length === 1) {
-        e.preventDefault();
-        const sx = e.touches[0].clientX - rect.left;
-        const sy = e.touches[0].clientY - rect.top;
+        if (isPanning || draggedNode) {
+          e.preventDefault();
+          const sx = e.touches[0].clientX - rect.left;
+          const sy = e.touches[0].clientY - rect.top;
 
-        if (isPanning) {
-          panX = sx - startPanX;
-          panY = sy - startPanY;
-        } else if (draggedNode) {
-          const worldPos = screenToWorld(sx, sy);
-          draggedNode.x = worldPos.x;
-          draggedNode.y = worldPos.y;
+          if (isPanning) {
+            panX = sx - startPanX;
+            panY = sy - startPanY;
+          } else if (draggedNode) {
+            const worldPos = screenToWorld(sx, sy);
+            draggedNode.x = worldPos.x;
+            draggedNode.y = worldPos.y;
+          }
         }
       } else if (e.touches.length === 2 && initialPinchDist > 0) {
         e.preventDefault();
@@ -3775,6 +3778,7 @@
     }
 
     function onTouchEnd(e) {
+      if (!isRunning) return;
       if (e.touches.length === 0) {
         if (isPanning) isPanning = false;
         if (draggedNode) {
@@ -3784,12 +3788,14 @@
         initialPinchDist = 0;
       } else if (e.touches.length === 1) {
         initialPinchDist = 0;
-        const rect = canvas.getBoundingClientRect();
-        const sx = e.touches[0].clientX - rect.left;
-        const sy = e.touches[0].clientY - rect.top;
-        isPanning = true;
-        startPanX = sx - panX;
-        startPanY = sy - panY;
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          const sx = e.touches[0].clientX - rect.left;
+          const sy = e.touches[0].clientY - rect.top;
+          isPanning = true;
+          startPanX = sx - panX;
+          startPanY = sy - panY;
+        }
       }
     }
 

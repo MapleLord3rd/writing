@@ -2344,9 +2344,10 @@ body.nav-open {
     position: static;
   }
 
-  /* Mobile / Tablet Centered Modal Overlay for Atmosphere and Ambient Popovers */
+  /* Mobile / Tablet Centered Modal Overlay for Atmosphere, Ambient, and Reader Popovers */
   .mode-popover,
-  .ambient-popover {
+  .ambient-popover,
+  .reader-panel-popover {
     position: fixed !important;
     top: 50% !important;
     left: 50% !important;
