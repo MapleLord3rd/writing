@@ -3,7 +3,7 @@
    Offline caching, asset preloading, resilient background sync
    ============================================================ */
 
-const CACHE_NAME = 'archive-cache-v3.9';
+const CACHE_NAME = 'archive-cache-v4.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
