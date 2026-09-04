@@ -966,13 +966,18 @@
     }, { passive: true });
 
     navToggle.addEventListener('click', () => {
-      navToggle.classList.toggle('open');
-      navLinks.classList.toggle('open');
-      navToggle.setAttribute('aria-expanded', navToggle.classList.contains('open'));
+      const isOpen = navToggle.classList.toggle('open');
+      navLinks.classList.toggle('open', isOpen);
+      document.body.classList.toggle('nav-open', isOpen);
+      navToggle.setAttribute('aria-expanded', isOpen);
     });
 
     $('#btnNavSurprise')?.addEventListener('click', () => {
       triggerSurpriseMe();
+      navToggle.classList.remove('open');
+      navLinks.classList.remove('open');
+      document.body.classList.remove('nav-open');
+      navToggle.setAttribute('aria-expanded', 'false');
     });
 
     document.addEventListener('click', (e) => {
@@ -983,6 +988,7 @@
       navigateTo(page);
       navToggle.classList.remove('open');
       navLinks.classList.remove('open');
+      document.body.classList.remove('nav-open');
       navToggle.setAttribute('aria-expanded', 'false');
     });
   }
@@ -3075,6 +3081,7 @@
         e.stopPropagation();
         navToggle.classList.remove('open');
         navLinks.classList.remove('open');
+        document.body.classList.remove('nav-open');
         navToggle.setAttribute('aria-expanded', 'false');
         return;
       }
@@ -3699,9 +3706,20 @@
       }
     }
 
+    let initialPinchDist = 0;
+    let initialPinchZoom = 1.0;
+    let initialPinchCenter = { x: 0, y: 0 };
+
+    function getTouchDist(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
     function onTouchStart(e) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
       if (e.touches.length === 1) {
-        const rect = canvas.getBoundingClientRect();
         const sx = e.touches[0].clientX - rect.left;
         const sy = e.touches[0].clientY - rect.top;
         const hit = findNodeAt(sx, sy);
@@ -3713,13 +3731,22 @@
           startPanX = sx - panX;
           startPanY = sy - panY;
         }
+      } else if (e.touches.length === 2) {
+        isPanning = false;
+        draggedNode = null;
+        initialPinchDist = getTouchDist(e.touches[0], e.touches[1]);
+        initialPinchZoom = zoom;
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        initialPinchCenter = screenToWorld(cx, cy);
       }
     }
 
     function onTouchMove(e) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
       if (e.touches.length === 1) {
         e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
         const sx = e.touches[0].clientX - rect.left;
         const sy = e.touches[0].clientY - rect.top;
 
@@ -3731,14 +3758,38 @@
           draggedNode.x = worldPos.x;
           draggedNode.y = worldPos.y;
         }
+      } else if (e.touches.length === 2 && initialPinchDist > 0) {
+        e.preventDefault();
+        const currentDist = getTouchDist(e.touches[0], e.touches[1]);
+        const scale = currentDist / initialPinchDist;
+        const newZoom = Math.max(0.35, Math.min(3.0, initialPinchZoom * scale));
+
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+        zoom = newZoom;
+        const worldAfter = screenToWorld(cx, cy);
+        panX += (worldAfter.x - initialPinchCenter.x) * zoom;
+        panY += (worldAfter.y - initialPinchCenter.y) * zoom;
       }
     }
 
     function onTouchEnd(e) {
-      if (isPanning) isPanning = false;
-      if (draggedNode) {
-        showStarInspector(draggedNode);
-        draggedNode = null;
+      if (e.touches.length === 0) {
+        if (isPanning) isPanning = false;
+        if (draggedNode) {
+          showStarInspector(draggedNode);
+          draggedNode = null;
+        }
+        initialPinchDist = 0;
+      } else if (e.touches.length === 1) {
+        initialPinchDist = 0;
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.touches[0].clientX - rect.left;
+        const sy = e.touches[0].clientY - rect.top;
+        isPanning = true;
+        startPanX = sx - panX;
+        startPanY = sy - panY;
       }
     }
 
