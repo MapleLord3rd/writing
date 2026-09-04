@@ -79,6 +79,15 @@
   /* Misc */
   --radius:        6px;
   --radius-lg:     10px;
+
+  /* Mood Atmospheric Aura & Dynamic Color Temperature */
+  --mood-ambient-tint:    transparent;
+  --mood-ambient-glow:    transparent;
+  --mood-shadow-tint:     transparent;
+  --mood-specular:        transparent;
+  --mood-border-glow:     transparent;
+  --mood-glow-radius:     8px;
+  --mood-pulse-speed:     2s;
 }
 
 /* ============================================================
@@ -556,6 +565,30 @@ input, select {
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+}
+
+.atmosphere-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Contrasting Top-Right Celestial Horizon Rim Glow */
+  background: radial-gradient(ellipse 65% 50% at 85% 15%, var(--mood-ambient-tint, transparent) 0%, transparent 70%);
+  opacity: 0.85;
+  transition: background 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  mix-blend-mode: screen;
+}
+
+.atmosphere-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Contrasting Bottom-Left Ambient Rim Starlight Glow */
+  background: radial-gradient(ellipse 55% 42% at 15% 85%, var(--mood-ambient-glow, transparent) 0%, transparent 70%);
+  opacity: 0.75;
+  transition: background 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  mix-blend-mode: screen;
 }
 
 .atmosphere-canvas {
@@ -2477,17 +2510,35 @@ input, select {
 
 .modal-close {
   color: var(--text-muted);
-  padding: 6px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   border-radius: 50%;
-  transition: all var(--duration-fast);
+  border: 1px solid transparent;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  padding: 0;
 }
 
-.modal-close:hover {
+.modal-close:hover,
+.modal-close:focus-visible {
   color: var(--text);
   background: var(--bg-warm);
+  border-color: rgba(230, 197, 148, 0.3);
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.modal-close:active {
+  transform: translateY(0) scale(0.95);
 }
 
 .modal-form {
@@ -2540,14 +2591,98 @@ input, select {
 }
 
 .form-textarea-large {
-  min-height: 460px !important;
-  font-size: var(--fs-lg) !important;
-  line-height: var(--lh-poem) !important;
+  min-height: 480px !important;
+  font-size: 1.15rem !important;
+  line-height: 1.85 !important;
   font-family: var(--font-serif) !important;
-  padding: var(--sp-xl) !important;
-  border-radius: var(--radius) !important;
-  background: var(--bg) !important;
-  border: 1px solid var(--border-strong) !important;
+  padding: 1.5rem 1.75rem !important;
+  border-radius: var(--radius-md, 10px) !important;
+  background: #101017 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5) !important;
+  letter-spacing: 0.01em;
+  caret-color: #E68A90 !important;
+}
+
+.form-textarea-large:focus {
+  background: #141420 !important;
+  color: #FFFFFF !important;
+  border-color: #E68A90 !important;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4), 0 0 0 3.5px rgba(230, 138, 144, 0.28) !important;
+}
+
+.form-duel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+}
+
+.form-duel-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.btn-duel-tag {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.btn-duel-neerav {
+  background: rgba(230, 138, 144, 0.15);
+  color: #FFA5AC;
+  border-color: rgba(230, 138, 144, 0.4);
+}
+
+.btn-duel-neerav:hover {
+  background: rgba(230, 138, 144, 0.28);
+  border-color: #FFA5AC;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(230, 138, 144, 0.25);
+}
+
+.btn-duel-avigna {
+  background: rgba(184, 154, 230, 0.15);
+  color: #D6BDFF;
+  border-color: rgba(184, 154, 230, 0.4);
+}
+
+.btn-duel-avigna:hover {
+  background: rgba(184, 154, 230, 0.28);
+  border-color: #D6BDFF;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(184, 154, 230, 0.25);
+}
+
+.btn-duel-both {
+  background: rgba(230, 197, 148, 0.15);
+  color: #F8E4C3;
+  border-color: rgba(230, 197, 148, 0.4);
+}
+
+.btn-duel-both:hover {
+  background: rgba(230, 197, 148, 0.28);
+  border-color: #F8E4C3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(230, 197, 148, 0.25);
 }
 
 .form-group {
@@ -2563,8 +2698,8 @@ input, select {
 }
 
 .form-label {
-  font-size: var(--fs-xs);
-  font-weight: 500;
+  font-size: 0.78rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -2572,40 +2707,43 @@ input, select {
 
 .form-input,
 .form-textarea {
-  padding: var(--sp-sm) var(--sp-md);
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border-strong);
+  padding: 0.75rem 1rem;
+  background: #13131A !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: var(--radius);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  line-height: 1.5;
   transition: all var(--duration-fast);
   outline: none;
+  caret-color: #E68A90;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.7;
+  color: rgba(220, 215, 205, 0.48) !important;
+  opacity: 1;
 }
 
 .form-input option {
-  background: var(--bg-card);
-  color: var(--text);
+  background: #181822;
+  color: #FFFFFF;
 }
 
 .form-input:focus,
 .form-textarea:focus {
-  border-color: var(--accent);
-  background: var(--bg-card);
-  color: var(--text);
-  box-shadow: 0 0 0 3px var(--accent-faint);
+  background: #161622 !important;
+  color: #FFFFFF !important;
+  border-color: #E68A90 !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(230, 138, 144, 0.28) !important;
 }
 
 .form-textarea {
   font-family: var(--font-serif);
   font-size: var(--fs-md);
-  color: var(--text);
+  color: #FFFFFF !important;
   line-height: var(--lh-relaxed);
   resize: vertical;
   min-height: 200px;
@@ -3178,7 +3316,6 @@ input, select {
   color: var(--text-muted);
   min-width: 32px;
   text-align: right;
-}
   cursor: pointer;
   height: 4px;
 }
@@ -3908,7 +4045,8 @@ input, select {
   font-family: var(--font-serif);
   font-size: 1.5rem;
   line-height: var(--lh-poem);
-  color: var(--text);
+  color: #FFFFFF !important;
+  caret-color: #E68A90 !important;
   resize: none;
   padding: var(--sp-md) 0;
 }
@@ -3995,9 +4133,12 @@ input, select {
 }
 
 .form-textarea-small {
-  min-height: 80px;
+  min-height: 90px;
   font-family: var(--font-serif);
   font-size: var(--fs-sm);
+  background: #13131A !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
 }
 
 /* ============================================================
@@ -4582,6 +4723,34 @@ input, select {
   margin: 6px 0 8px 0;
   padding: 10px 0;
 }
+.profile-bio-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.profile-bio-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #13131A !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: var(--radius);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  outline: none;
+  caret-color: #E68A90;
+}
+.profile-bio-input:focus {
+  background: #161622 !important;
+  border-color: #E68A90 !important;
+  box-shadow: 0 0 0 3px rgba(230, 138, 144, 0.28) !important;
+}
+.profile-bio-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
 .profile-stats-grid {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
@@ -4667,4 +4836,1507 @@ input, select {
   70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
+
+/* ============================================================
+   CONSTELLATION / STAR MAP NAVIGATION (#page-constellation)
+   ============================================================ */
+.page--constellation {
+  position: fixed;
+  top: var(--nav-height, 64px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: calc(100vh - var(--nav-height, 64px));
+  height: calc(100dvh - var(--nav-height, 64px));
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, #161220 0%, #0c0912 60%, #050407 100%);
+  display: none;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+.page--constellation.active {
+  display: block;
+  animation: pageIn 0.5s var(--ease-out);
+}
+
+/* Hide standard footer & prevent scroll when constellation map is open */
+body.constellation-mode {
+  overflow: hidden !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+
+body.constellation-mode .footer,
+body.constellation-mode .btn-add-writing,
+#page-constellation.active ~ .footer,
+body:has(#page-constellation.active) .footer {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.constellation-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#constellationCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  z-index: 1;
+}
+
+#constellationCanvas:active {
+  cursor: grabbing;
+}
+
+.constellation-canvas-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Constellation HUD & Controls */
+.constellation-hud {
+  position: absolute;
+  top: var(--sp-md);
+  left: var(--sp-md);
+  right: var(--sp-md);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+  pointer-events: none;
+}
+
+.constellation-header {
+  pointer-events: auto;
+  max-width: 580px;
+}
+
+.constellation-header .section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gold, #E6C594);
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.constellation-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.2;
+  margin: 0 0 4px 0;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85);
+}
+
+.constellation-desc {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.45;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
+.constellation-toolbar {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.constellation-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(18, 15, 23, 0.85);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.constellation-filter-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.constellation-filter-btn:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.constellation-filter-btn.active {
+  background: rgba(230, 197, 148, 0.2);
+  color: var(--gold, #E6C594);
+  border: 1px solid rgba(230, 197, 148, 0.4);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(230, 197, 148, 0.15);
+}
+
+.constellation-filter-btn.filter--neerav.active {
+  background: rgba(224, 83, 104, 0.22);
+  color: #FF8A9B;
+  border-color: rgba(224, 83, 104, 0.45);
+  box-shadow: 0 2px 10px rgba(224, 83, 104, 0.2);
+}
+
+.constellation-filter-btn.filter--avigna.active {
+  background: rgba(179, 136, 255, 0.22);
+  color: #D1B3FF;
+  border-color: rgba(179, 136, 255, 0.45);
+  box-shadow: 0 2px 10px rgba(179, 136, 255, 0.2);
+}
+
+.constellation-filter-btn.filter--dialogue.active {
+  background: rgba(250, 208, 44, 0.22);
+  color: #FFE57F;
+  border-color: rgba(250, 208, 44, 0.45);
+  box-shadow: 0 2px 10px rgba(250, 208, 44, 0.2);
+}
+
+.constellation-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(18, 15, 23, 0.85);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  padding: 4px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.constellation-tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+}
+
+.constellation-tool-btn:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.04);
+}
+
+/* Constellation Legend */
+.constellation-legend {
+  position: absolute;
+  bottom: var(--sp-md);
+  left: var(--sp-md);
+  z-index: 20;
+  background: rgba(18, 15, 23, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+
+.constellation-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot--neerav {
+  background: #E05368;
+  box-shadow: 0 0 8px #E05368;
+}
+
+.legend-dot--avigna {
+  background: #B388FF;
+  box-shadow: 0 0 8px #B388FF;
+}
+
+.legend-dot--both {
+  background: #FAD02C;
+  box-shadow: 0 0 8px #FAD02C;
+}
+
+.legend-line--dialogue {
+  width: 14px;
+  height: 2px;
+  background: #FAD02C;
+  display: inline-block;
+  box-shadow: 0 0 6px #FAD02C;
+}
+
+/* Constellation Hover Tooltip */
+.constellation-star-tooltip {
+  position: absolute;
+  z-index: 85;
+  pointer-events: none;
+  background: rgba(18, 15, 24, 0.94);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(230, 197, 148, 0.35);
+  border-radius: 10px;
+  padding: 12px 16px;
+  max-width: 280px;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.75), 0 0 20px rgba(230, 197, 148, 0.15);
+  transform: translate(0, 0);
+  transition: opacity 0.12s ease;
+}
+
+.constellation-star-tooltip[hidden] {
+  display: none !important;
+}
+
+.constellation-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.constellation-tooltip-type {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold, #E6C594);
+}
+
+.constellation-tooltip-author {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.tooltip-author--neerav {
+  color: #FF8A9B;
+  background: rgba(224, 83, 104, 0.18);
+}
+
+.tooltip-author--avigna {
+  color: #D1B3FF;
+  background: rgba(179, 136, 255, 0.18);
+}
+
+.constellation-tooltip-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFFFFF;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.constellation-tooltip-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.constellation-tooltip-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gold, #E6C594);
+  opacity: 0.9;
+}
+
+/* ============================================================
+   CONSTELLATION CARD INSPECTOR DRAWER (#constellationInspector)
+   ============================================================ */
+.constellation-card-inspector {
+  position: absolute;
+  top: var(--sp-md);
+  right: var(--sp-md);
+  bottom: var(--sp-md);
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100% - 32px);
+  background: rgba(18, 15, 24, 0.95);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(230, 197, 148, 0.32);
+  border-radius: 16px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 95;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(230, 197, 148, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.constellation-card-inspector[hidden],
+.constellation-card-inspector:not(.open) {
+  transform: translateX(calc(100% + 40px));
+  opacity: 0;
+  pointer-events: none;
+  display: flex !important;
+}
+
+/* Inspector Header */
+.constellation-inspector-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.constellation-inspector-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.constellation-inspector-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(230, 197, 148, 0.14);
+  border: 1px solid rgba(230, 197, 148, 0.32);
+  color: var(--gold, #E6C594);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.constellation-inspector-close {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.constellation-inspector-close svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.constellation-inspector-close:hover,
+.constellation-inspector-close:focus-visible {
+  background: rgba(230, 197, 148, 0.22);
+  color: #FFFFFF;
+  transform: translateY(-1px) scale(1.08);
+  border-color: var(--gold, #E6C594);
+  box-shadow: 0 4px 14px rgba(230, 197, 148, 0.35);
+}
+
+.constellation-inspector-close:active {
+  transform: translateY(0) scale(0.95);
+  background: rgba(230, 197, 148, 0.3);
+}
+
+/* Inspector Typography & Content */
+.constellation-inspector-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.25;
+  margin: 0;
+  word-break: break-word;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.constellation-inspector-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--gold, #E6C594);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Inspector Scrollable Body */
+.constellation-inspector-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(230, 197, 148, 0.35) transparent;
+}
+
+.constellation-inspector-body::-webkit-scrollbar {
+  width: 5px;
+}
+.constellation-inspector-body::-webkit-scrollbar-thumb {
+  background: rgba(230, 197, 148, 0.35);
+  border-radius: 4px;
+}
+
+.constellation-inspector-excerpt-container {
+  background: rgba(255, 255, 255, 0.035);
+  border-left: 3px solid var(--gold, #E6C594);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 14px;
+  margin: 2px 0;
+}
+
+.constellation-inspector-excerpt {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(235, 230, 220, 0.92);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Connections & Dialogue Links */
+.constellation-inspector-connections-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.constellation-connections-heading {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold, #E6C594);
+}
+
+.constellation-inspector-connections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.constellation-inspector-connections .tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+}
+
+.constellation-inspector-connections .tag:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+}
+
+.inspector-dialogue-link {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 14px;
+  background: rgba(203, 166, 104, 0.12);
+  border: 1px solid rgba(203, 166, 104, 0.35);
+  border-radius: 8px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--gold, #E6C594);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.inspector-dialogue-link em {
+  color: #FFFFFF;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Inspector Pinned Footer */
+.constellation-inspector-footer {
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+
+/* Read Full Piece CTA */
+.constellation-read-btn {
+  width: 100%;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #C4666E 0%, #9B3B48 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(196, 102, 110, 0.35);
+  transition: all 0.2s ease;
+}
+
+.constellation-read-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(196, 102, 110, 0.45);
+  filter: brightness(1.08);
+}
+
+.constellation-read-btn .read-btn-arrow {
+  transition: transform 0.2s ease;
+}
+
+.constellation-read-btn:hover .read-btn-arrow {
+  transform: translateX(4px);
+}
+
+/* Mobile Responsiveness for Constellation */
+@media (max-width: 768px) {
+  .constellation-hud {
+    top: var(--sp-xs);
+    left: var(--sp-xs);
+    right: var(--sp-xs);
+  }
+
+  .constellation-header .constellation-desc {
+    display: none;
+  }
+
+  .constellation-card-inspector {
+    top: auto;
+    left: var(--sp-xs);
+    right: var(--sp-xs);
+    bottom: var(--sp-xs);
+    width: auto;
+    max-height: 60vh;
+    border-radius: 14px;
+    padding: 16px 18px;
+  }
+
+  .constellation-legend {
+    display: none;
+    left: var(--sp-xs);
+    right: var(--sp-xs);
+    bottom: var(--sp-xs);
+    width: auto;
+    max-height: 65vh;
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  .constellation-legend {
+    display: none;
+  }
+}
+
+/* ============================================================
+   INTERACTIVE MOOD COMPANION & ORACLE SYSTEM
+   A celestial, glassmorphic emotional sanctuary
+   ============================================================ */
+
+/* Top Navigation Mood Button */
+.nav-mood-btn {
+  background: rgba(22, 18, 30, 0.7);
+  border: 1px solid rgba(230, 197, 148, 0.35);
+  color: var(--gold, #E6C594);
+  border-radius: 10px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.nav-mood-btn:hover {
+  background: rgba(230, 197, 148, 0.15);
+  border-color: var(--gold, #E6C594);
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(230, 197, 148, 0.25);
+  color: #fff;
+}
+
+.nav-mood-btn.has-active-mood {
+  border-color: var(--gold, #E6C594);
+  background: linear-gradient(135deg, rgba(230, 197, 148, 0.18), rgba(168, 85, 247, 0.15));
+  box-shadow: 0 0 16px rgba(230, 197, 148, 0.3);
+}
+
+.nav-mood-btn.has-active-mood::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold, #E6C594);
+  box-shadow: 0 0 8px var(--gold, #E6C594);
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.4); opacity: 1; }
+}
+
+/* ——— Emotional Sanctuary Modal ——— */
+.modal.mood-modal {
+  z-index: 1000;
+}
+
+.modal.mood-modal .modal-content--mood {
+  max-width: 760px;
+  width: min(760px, calc(100vw - 32px));
+  background: radial-gradient(circle at 50% 0%, rgba(35, 25, 52, 0.94) 0%, rgba(15, 12, 22, 0.96) 100%);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  border: 1px solid rgba(230, 197, 148, 0.3);
+  border-radius: 24px;
+  padding: 32px 36px;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.85), 0 0 50px rgba(230, 197, 148, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.modal.mood-modal .modal-content--mood::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(230, 197, 148, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+.modal.mood-modal .modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+}
+
+.modal.mood-modal .modal-close {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(247, 235, 217, 0.85);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.modal.mood-modal .modal-close svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.modal.mood-modal .modal-close:hover,
+.modal.mood-modal .modal-close:focus-visible {
+  background: rgba(230, 197, 148, 0.22);
+  border-color: var(--gold, #E6C594);
+  color: #ffffff;
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 4px 18px rgba(230, 197, 148, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.modal.mood-modal .modal-close:active {
+  transform: translateY(0) scale(0.95);
+  background: rgba(230, 197, 148, 0.3);
+}
+
+.mood-modal-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mood-modal-header-text .section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold, #E6C594);
+  opacity: 0.9;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mood-modal-header-text .section-label::before {
+  content: '✦';
+  font-size: 10px;
+  color: var(--gold, #E6C594);
+}
+
+.mood-modal .modal-title {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 3.2vw, 28px);
+  font-weight: 600;
+  color: #F7EBD9;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.mood-modal-desc {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: rgba(247, 235, 217, 0.72);
+  margin: 0;
+  max-width: 600px;
+}
+
+/* Emotion Selection Grid */
+.mood-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 6px;
+}
+
+/* Individual Mood Option Card / Button */
+.mood-card-btn {
+  background: rgba(26, 21, 35, 0.65);
+  border: 1px solid rgba(230, 197, 148, 0.18);
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  width: 100%;
+}
+
+.mood-card-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  border-radius: 15px;
+}
+
+.mood-card-btn:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 24px rgba(230, 197, 148, 0.18);
+  border-color: rgba(230, 197, 148, 0.5);
+}
+
+.mood-card-btn:hover::before {
+  opacity: 1;
+}
+
+.mood-card-btn:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* Emotion-Specific Aura Styling */
+.mood-card-btn[data-mood="sad"] {
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.mood-card-btn[data-mood="sad"]::before {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.04) 100%);
+}
+.mood-card-btn[data-mood="sad"]:hover {
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(245, 158, 11, 0.25);
+}
+
+.mood-card-btn[data-mood="anxious"] {
+  border-color: rgba(45, 212, 191, 0.28);
+}
+.mood-card-btn[data-mood="anxious"]::before {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.14) 0%, rgba(13, 148, 136, 0.04) 100%);
+}
+.mood-card-btn[data-mood="anxious"]:hover {
+  border-color: rgba(45, 212, 191, 0.7);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(45, 212, 191, 0.25);
+}
+
+.mood-card-btn[data-mood="nostalgic"] {
+  border-color: rgba(249, 115, 22, 0.28);
+}
+.mood-card-btn[data-mood="nostalgic"]::before {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.14) 0%, rgba(180, 83, 9, 0.04) 100%);
+}
+.mood-card-btn[data-mood="nostalgic"]:hover {
+  border-color: rgba(249, 115, 22, 0.7);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(249, 115, 22, 0.25);
+}
+
+.mood-card-btn[data-mood="joyful"] {
+  border-color: rgba(168, 85, 247, 0.32);
+}
+.mood-card-btn[data-mood="joyful"]::before {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(234, 179, 8, 0.08) 100%);
+}
+.mood-card-btn[data-mood="joyful"]:hover {
+  border-color: rgba(168, 85, 247, 0.8);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 30px rgba(168, 85, 247, 0.3);
+}
+
+.mood-card-btn[data-mood="weary"] {
+  border-color: rgba(129, 140, 248, 0.28);
+}
+.mood-card-btn[data-mood="weary"]::before {
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.14) 0%, rgba(49, 46, 129, 0.08) 100%);
+}
+.mood-card-btn[data-mood="weary"]:hover {
+  border-color: rgba(129, 140, 248, 0.75);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(129, 140, 248, 0.28);
+}
+
+.mood-card-btn[data-mood="peaceful"],
+.mood-card-btn[data-mood="serene"] {
+  border-color: rgba(244, 114, 182, 0.28);
+}
+.mood-card-btn[data-mood="peaceful"]::before,
+.mood-card-btn[data-mood="serene"]::before {
+  background: linear-gradient(135deg, rgba(244, 114, 182, 0.14) 0%, rgba(219, 39, 119, 0.04) 100%);
+}
+.mood-card-btn[data-mood="peaceful"]:hover,
+.mood-card-btn[data-mood="serene"]:hover {
+  border-color: rgba(244, 114, 182, 0.75);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(244, 114, 182, 0.28);
+}
+
+.mood-card-btn[data-mood="neutral"],
+.mood-card-btn--neutral {
+  grid-column: 1 / -1;
+  border-color: rgba(230, 197, 148, 0.28);
+  background: rgba(26, 21, 35, 0.65);
+}
+.mood-card-btn[data-mood="neutral"]::before,
+.mood-card-btn--neutral::before {
+  background: linear-gradient(135deg, rgba(230, 197, 148, 0.12) 0%, rgba(200, 160, 100, 0.04) 100%);
+}
+.mood-card-btn[data-mood="neutral"]:hover,
+.mood-card-btn--neutral:hover {
+  border-color: rgba(230, 197, 148, 0.85);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 30px rgba(230, 197, 148, 0.25);
+}
+
+/* Mood Emoji Orb */
+.mood-emoji {
+  font-size: 26px;
+  line-height: 1;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mood-card-btn:hover .mood-emoji {
+  transform: scale(1.12) rotate(4deg);
+}
+
+/* Mood Info Text */
+.mood-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mood-name {
+  font-family: var(--font-serif);
+  font-size: var(--fs-base, 16px);
+  font-weight: 600;
+  color: #F7EBD9;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.mood-hint {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(247, 235, 217, 0.65);
+}
+
+/* ============================================================
+   FLOATING MOOD COMPANION CARD (BOTTOM-LEFT WIDGET)
+   ============================================================ */
+.mood-companion-card {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 950;
+  width: min(380px, calc(100vw - 48px));
+  background: radial-gradient(circle at 0% 0%, rgba(32, 24, 48, 0.95) 0%, rgba(16, 13, 23, 0.97) 100%);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(230, 197, 148, 0.35);
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 32px rgba(230, 197, 148, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  transform: translateY(40px) scale(0.92);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+  box-sizing: border-box;
+}
+
+.mood-companion-card.visible {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mood-companion-card[hidden] {
+  display: none !important;
+}
+
+/* Dynamic glow accent by active mood on companion card */
+.mood-companion-card[data-mood="sad"] {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(245, 158, 11, 0.18);
+}
+.mood-companion-card[data-mood="anxious"] {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(45, 212, 191, 0.18);
+}
+.mood-companion-card[data-mood="nostalgic"] {
+  border-color: rgba(249, 115, 22, 0.45);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(249, 115, 22, 0.18);
+}
+.mood-companion-card[data-mood="joyful"] {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(168, 85, 247, 0.22);
+}
+.mood-companion-card[data-mood="weary"] {
+  border-color: rgba(129, 140, 248, 0.45);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(129, 140, 248, 0.2);
+}
+.mood-companion-card[data-mood="peaceful"],
+.mood-companion-card[data-mood="serene"] {
+  border-color: rgba(244, 114, 182, 0.45);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(244, 114, 182, 0.2);
+}
+.mood-companion-card[data-mood="neutral"] {
+  border-color: rgba(230, 197, 148, 0.45);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(230, 197, 148, 0.2);
+}
+
+.mood-companion-card .mood-companion-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(247, 235, 217, 0.85);
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mood-companion-card .mood-companion-close svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.mood-companion-card .mood-companion-close:hover,
+.mood-companion-card .mood-companion-close:focus-visible {
+  background: rgba(230, 197, 148, 0.22);
+  color: #ffffff;
+  border-color: var(--gold, #E6C594);
+  transform: translateY(-1px) scale(1.08);
+  box-shadow: 0 4px 14px rgba(230, 197, 148, 0.35);
+}
+
+.mood-companion-card .mood-companion-close:active {
+  transform: translateY(0) scale(0.95);
+  background: rgba(230, 197, 148, 0.3);
+}
+
+.mood-companion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(230, 197, 148, 0.12);
+  border: 1px solid rgba(230, 197, 148, 0.3);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  width: fit-content;
+  max-width: calc(100% - 36px);
+}
+
+.mood-companion-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mood-companion-state {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--gold, #E6C594);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mood-companion-quote {
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #F7EBD9;
+  font-style: italic;
+  position: relative;
+  padding-left: 12px;
+  margin: 0;
+  border-left: 2px solid var(--gold, #E6C594);
+}
+
+.mood-companion-quote .mood-quote-author {
+  margin-top: 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-style: normal;
+  color: rgba(247, 235, 217, 0.7);
+  letter-spacing: 0.02em;
+}
+
+.mood-companion-sub {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(247, 235, 217, 0.75);
+  margin: 0;
+}
+
+/* Recommendation Box */
+.mood-companion-recommendation {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(230, 197, 148, 0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mood-rec-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #B3A89F);
+}
+
+.mood-rec-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--gold, #E6C594);
+  text-decoration: none;
+  font-family: var(--font-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.mood-rec-link:hover {
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.mood-rec-arrow {
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.mood-rec-link:hover .mood-rec-arrow {
+  transform: translateX(3px);
+}
+
+/* Companion Action Buttons */
+.mood-companion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.mood-companion-btn {
+  background: rgba(230, 197, 148, 0.1);
+  border: 1px solid rgba(230, 197, 148, 0.35);
+  color: var(--gold, #E6C594);
+  border-radius: var(--radius-full);
+  padding: 5px 14px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.mood-companion-btn:hover {
+  background: var(--gold, #E6C594);
+  color: #131110;
+  border-color: var(--gold, #E6C594);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 197, 148, 0.3);
+}
+
+/* Responsive styles for mood modal and card */
+@media (max-width: 640px) {
+  .modal.mood-modal .modal-content--mood {
+    padding: 24px 20px;
+  }
+
+  .mood-selection-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .mood-companion-card {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: none;
+    padding: 16px 18px;
+  }
+}
+
+/* ============================================================
+   LINE-BY-LINE STANZA DUELS (CO-AUTHORED POETRY & WEAVER)
+   ============================================================ */
+.stanza-duel-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xl);
+  margin: var(--sp-2xl) auto;
+  max-width: var(--reading-width, 680px);
+  position: relative;
+}
+
+.stanza-duel-card {
+  padding: var(--sp-xl) var(--sp-2xl);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.stanza-duel-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+/* Neerav Stanza Card (Archivist Crimson & Left Alignment) */
+.stanza-duel-card--neerav {
+  border-left: 4px solid #9E4046;
+  margin-right: var(--sp-lg);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(158, 64, 70, 0.05) 100%);
+}
+
+.stanza-duel-card--neerav .stanza-author-badge {
+  color: #E05368;
+  background: rgba(224, 83, 104, 0.12);
+  border: 1px solid rgba(224, 83, 104, 0.25);
+}
+
+.stanza-duel-card--neerav .stanza-text {
+  font-family: var(--font-serif);
+  font-style: normal;
+}
+
+/* Avigna Stanza Card (Muse Amethyst & Right Alignment) */
+.stanza-duel-card--avigna {
+  border-left: 4px solid #7B68EE;
+  margin-left: var(--sp-lg);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(123, 104, 238, 0.06) 100%);
+}
+
+.stanza-duel-card--avigna .stanza-author-badge {
+  color: #B388FF;
+  background: rgba(179, 136, 255, 0.12);
+  border: 1px solid rgba(179, 136, 255, 0.25);
+}
+
+.stanza-duel-card--avigna .stanza-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+/* Collaborative / Both Stanza Card */
+.stanza-duel-card--both {
+  border: 2px solid rgba(230, 197, 148, 0.4);
+  background: linear-gradient(135deg, rgba(158, 64, 70, 0.06) 0%, rgba(123, 104, 238, 0.06) 100%);
+  margin: 0 var(--sp-sm);
+}
+
+.stanza-duel-card--both .stanza-author-badge {
+  color: var(--gold, #E6C594);
+  background: var(--gold-faint);
+  border: 1px solid rgba(230, 197, 148, 0.3);
+}
+
+.stanza-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-md);
+}
+
+.stanza-author-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.stanza-turn-indicator {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.stanza-text {
+  font-size: var(--fs-lg);
+  line-height: var(--lh-relaxed);
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+/* Stanza Dialogue Connector Thread */
+.stanza-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: -12px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.stanza-connector-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--gold);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Admin Editor Stanza Helper Buttons */
+.editor-stanza-helpers {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  margin-bottom: var(--sp-xs);
+  flex-wrap: wrap;
+}
+
+.editor-stanza-btn {
+  background: var(--bg-warm);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.editor-stanza-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-faint);
+}
+
+/* ============================================================
+   SEARCH IN-TEXT HIGHLIGHTING (.search-highlight)
+   ============================================================ */
+mark.search-highlight {
+  background: rgba(230, 197, 148, 0.32);
+  color: inherit;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--gold, #E6C594);
+  animation: highlightGlow 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes highlightGlow {
+  from {
+    background: rgba(230, 197, 148, 0.25);
+    box-shadow: 0 0 0 rgba(230, 197, 148, 0);
+  }
+  to {
+    background: rgba(230, 197, 148, 0.45);
+    box-shadow: 0 0 8px rgba(230, 197, 148, 0.3);
+  }
+}
+
 

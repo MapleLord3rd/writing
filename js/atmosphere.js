@@ -2,6 +2,7 @@
    ATMOSPHERE & THEME ENGINE — THE ARCHIVE
    Clean, modular architecture for Website Modes & Reading Themes
    High-performance GPU-friendly Canvas & CSS Visual Effects
+   Context-Aware Abstract Parameter Mood System
    ============================================================ */
 
 (function () {
@@ -169,6 +170,256 @@
     midnight: 'midnightSky'
   };
 
+  // ============================================================
+  // ABSTRACT PARAMETER MOOD SYSTEM
+  // Math-driven modifiers interpolated smoothly over 1.2 - 1.8s
+  // Strictly isolated: does NOT touch Theme Mode or Audio System
+  // ============================================================
+  const MOOD_PROFILES = {
+    neutral: {
+      movementSpeedMultiplier: 1.0,
+      movementVariance: 1.0,
+      activityLevel: 1.0,
+      particleDensityMultiplier: 1.0,
+      particleSpeedMultiplier: 1.0,
+      particleOpacityMultiplier: 1.0,
+      fadeIntensity: 1.0,
+      pulseIntensity: 1.0,
+      wanderFrequency: 1.0,
+      glowBloomRadius: 1.0,
+      ambientBloomR: 230,
+      ambientBloomG: 197,
+      ambientBloomB: 148,
+      ambientBloomA: 0.0,
+      vignetteR: 0,
+      vignetteG: 0,
+      vignetteB: 0,
+      vignetteA: 0.0,
+      horizonR: 230,
+      horizonG: 197,
+      horizonB: 148,
+      horizonA: 0.0,
+      specularR: 230,
+      specularG: 225,
+      specularB: 215,
+      rippleColor: 'rgba(230, 197, 148, 0.7)'
+    },
+    sad: { // Melancholic / Solace: Uplifting warm golden glow blended with deep espresso shadows
+      movementSpeedMultiplier: 0.4,
+      movementVariance: 0.35,
+      activityLevel: 0.45,
+      particleDensityMultiplier: 0.85,
+      particleSpeedMultiplier: 0.4,
+      particleOpacityMultiplier: 0.9,
+      fadeIntensity: 0.6,
+      pulseIntensity: 1.2,
+      wanderFrequency: 0.35,
+      glowBloomRadius: 1.6,
+      ambientBloomR: 255,
+      ambientBloomG: 185,
+      ambientBloomB: 60,
+      ambientBloomA: 0.14,
+      vignetteR: 35,
+      vignetteG: 14,
+      vignetteB: 6,
+      vignetteA: 0.16,
+      horizonR: 251,
+      horizonG: 146,
+      horizonB: 60,
+      horizonA: 0.08,
+      specularR: 255,
+      specularG: 238,
+      specularB: 160,
+      rippleColor: 'rgba(255, 185, 60, 0.85)'
+    },
+    anxious: { // Restless / Grounding: Calming electric cyan crystal blended with oceanic midnight navy
+      movementSpeedMultiplier: 0.65,
+      movementVariance: 0.3,
+      activityLevel: 0.5,
+      particleDensityMultiplier: 0.95,
+      particleSpeedMultiplier: 0.55,
+      particleOpacityMultiplier: 0.95,
+      fadeIntensity: 0.75,
+      pulseIntensity: 1.4,
+      wanderFrequency: 0.4,
+      glowBloomRadius: 1.5,
+      ambientBloomR: 14,
+      ambientBloomG: 185,
+      ambientBloomB: 245,
+      ambientBloomA: 0.13,
+      vignetteR: 4,
+      vignetteG: 14,
+      vignetteB: 32,
+      vignetteA: 0.18,
+      horizonR: 3,
+      horizonG: 105,
+      horizonB: 161,
+      horizonA: 0.08,
+      specularR: 180,
+      specularG: 245,
+      specularB: 255,
+      rippleColor: 'rgba(14, 185, 245, 0.85)'
+    },
+    joyful: { // Joyful / Inspired: Radiant champagne gold blended with royal starlight amethyst
+      movementSpeedMultiplier: 1.6,
+      movementVariance: 1.4,
+      activityLevel: 2.2,
+      particleDensityMultiplier: 1.4,
+      particleSpeedMultiplier: 1.5,
+      particleOpacityMultiplier: 1.4,
+      fadeIntensity: 1.3,
+      pulseIntensity: 2.0,
+      wanderFrequency: 1.5,
+      glowBloomRadius: 1.8,
+      ambientBloomR: 255,
+      ambientBloomG: 205,
+      ambientBloomB: 40,
+      ambientBloomA: 0.15,
+      vignetteR: 48,
+      vignetteG: 12,
+      vignetteB: 72,
+      vignetteA: 0.16,
+      horizonR: 168,
+      horizonG: 85,
+      horizonB: 247,
+      horizonA: 0.09,
+      specularR: 255,
+      specularG: 255,
+      specularB: 225,
+      rippleColor: 'rgba(255, 205, 40, 0.9)'
+    },
+    nostalgic: { // Nostalgic / Longing: Tender terracotta-rose bloom blended with rich sepia shadows
+      movementSpeedMultiplier: 0.45,
+      movementVariance: 0.35,
+      activityLevel: 0.6,
+      particleDensityMultiplier: 0.85,
+      particleSpeedMultiplier: 0.45,
+      particleOpacityMultiplier: 0.85,
+      fadeIntensity: 0.5,
+      pulseIntensity: 0.9,
+      wanderFrequency: 0.4,
+      glowBloomRadius: 1.4,
+      ambientBloomR: 248,
+      ambientBloomG: 135,
+      ambientBloomB: 105,
+      ambientBloomA: 0.13,
+      vignetteR: 42,
+      vignetteG: 16,
+      vignetteB: 10,
+      vignetteA: 0.16,
+      horizonR: 225,
+      horizonG: 29,
+      horizonB: 72,
+      horizonA: 0.08,
+      specularR: 255,
+      specularG: 218,
+      specularB: 185,
+      rippleColor: 'rgba(248, 135, 105, 0.85)'
+    },
+    weary: { // Tired / Sanctuary: Luminous lavender-indigo moonlight blended with deep obsidian stillness
+      movementSpeedMultiplier: 0.15,
+      movementVariance: 0.1,
+      activityLevel: 0.2,
+      particleDensityMultiplier: 0.5,
+      particleSpeedMultiplier: 0.15,
+      particleOpacityMultiplier: 0.4,
+      fadeIntensity: 0.2,
+      pulseIntensity: 0.3,
+      wanderFrequency: 0.1,
+      glowBloomRadius: 1.1,
+      ambientBloomR: 130,
+      ambientBloomG: 140,
+      ambientBloomB: 255,
+      ambientBloomA: 0.12,
+      vignetteR: 6,
+      vignetteG: 6,
+      vignetteB: 18,
+      vignetteA: 0.20,
+      horizonR: 79,
+      horizonG: 70,
+      horizonB: 229,
+      horizonA: 0.08,
+      specularR: 220,
+      specularG: 230,
+      specularB: 255,
+      rippleColor: 'rgba(130, 140, 255, 0.75)'
+    },
+    peaceful: { // Serene / Equilibrium: Luminous jade-mint bloom blended with coniferous pine shadows
+      movementSpeedMultiplier: 0.75,
+      movementVariance: 0.25,
+      activityLevel: 0.9,
+      particleDensityMultiplier: 1.0,
+      particleSpeedMultiplier: 0.7,
+      particleOpacityMultiplier: 1.1,
+      fadeIntensity: 0.9,
+      pulseIntensity: 1.0,
+      wanderFrequency: 0.6,
+      glowBloomRadius: 1.3,
+      ambientBloomR: 40,
+      ambientBloomG: 225,
+      ambientBloomB: 160,
+      ambientBloomA: 0.13,
+      vignetteR: 4,
+      vignetteG: 28,
+      vignetteB: 18,
+      vignetteA: 0.16,
+      horizonR: 16,
+      horizonG: 185,
+      horizonB: 129,
+      horizonA: 0.08,
+      specularR: 205,
+      specularG: 255,
+      specularB: 235,
+      rippleColor: 'rgba(40, 225, 160, 0.85)'
+    }
+  };
+
+  class MoodManager {
+    constructor(engine = null) {
+      this.engine = engine;
+      this.currentMood = 'neutral';
+      this.targetMood = 'neutral';
+      this.current = { ...MOOD_PROFILES.neutral };
+      this.target = { ...MOOD_PROFILES.neutral };
+      this.transitionSpeed = 1.6; // ~1.2 to 1.8s exponential smoothing
+    }
+
+    setEngine(engine) {
+      this.engine = engine;
+    }
+
+    activateMood(moodKey, instant = false) {
+      const normalizedKey = (moodKey === 'serene' || moodKey === 'peaceful') ? 'peaceful' : moodKey;
+      const profile = MOOD_PROFILES[normalizedKey] || MOOD_PROFILES.neutral;
+      this.targetMood = normalizedKey;
+      this.target = { ...profile };
+
+      if (instant) {
+        this.currentMood = normalizedKey;
+        this.current = { ...profile };
+      }
+
+      if (this.engine && typeof this.engine.triggerMoodShiftAura === 'function') {
+        this.engine.triggerMoodShiftAura(normalizedKey);
+      }
+    }
+
+    update(dt) {
+      const factor = Math.min(1, Math.max(0, 1 - Math.exp(-dt * this.transitionSpeed)));
+      for (const key of Object.keys(this.target)) {
+        if (typeof this.target[key] === 'number') {
+          this.current[key] += (this.target[key] - this.current[key]) * factor;
+        } else {
+          this.current[key] = this.target[key];
+        }
+      }
+    }
+
+    getModifiers() {
+      return this.current;
+    }
+  }
+
   // ——— Atmosphere Engine ———
   class AtmosphereEngine {
     constructor() {
@@ -183,12 +434,22 @@
       this.bursts = [];
       this.asteroids = [];
       this.sunRays = [];
+      this.ripples = [];
+      this.sparkles = [];
+      this.events = [];
+      this.pointer = { x: -1000, y: -1000, prevX: -1000, prevY: -1000, vx: 0, vy: 0, isDown: false, lastMove: 0 };
       this.isPaused = false;
       this.reducedMotion = false;
       this.width = 0;
       this.height = 0;
       this.dpr = 1;
       this.lastTime = 0;
+      this.eventTimer = 0;
+      this.nextMeteorTime = 0;
+      this.nextScratchTime = 0;
+
+      // Mood Manager
+      this.moodManager = new MoodManager(this);
 
       // Effect registries
       this.effectRenderers = {};
@@ -209,6 +470,9 @@
       this.handleResize();
 
       window.addEventListener('resize', () => this.handleResize(), { passive: true });
+
+      // Interactive Pointer / Touch Physics
+      this.initPointerInteractions();
 
       // Pause when tab is inactive to preserve CPU / battery
       document.addEventListener('visibilitychange', () => {
@@ -292,6 +556,8 @@
       this.bursts = [];
       this.asteroids = [];
       this.sunRays = [];
+      this.events = [];
+
       this.activeEffect = effectName;
       this.currentMode = modeId;
 
@@ -314,15 +580,374 @@
       const dt = Math.min((currentTime - this.lastTime) * 0.001, 0.1);
       this.lastTime = currentTime;
 
+      // Update Mood continuous interpolation
+      if (this.moodManager) {
+        this.moodManager.update(dt);
+      }
+
       if (this.ctx) {
         this.ctx.clearRect(0, 0, this.width, this.height);
+
+        // 1. Render Full-Screen Dynamic Mood Lighting, Bloom & Vignette Pass
+        this.drawMoodAtmosphere(this.ctx, dt);
+
+        // 2. Render Active Theme World
         const renderer = this.effectRenderers[this.activeEffect];
         if (renderer && renderer.updateAndDraw) {
           renderer.updateAndDraw(this, dt);
         }
+
+        // 3. Render interactive touch / pointer effects on top
+        this.updateAndDrawPointerEffects(dt);
       }
 
       this.animationFrameId = requestAnimationFrame((t) => this.loop(t));
+    }
+
+    activateMood(moodKey, instant = false) {
+      if (this.moodManager) {
+        this.moodManager.activateMood(moodKey, instant);
+      }
+    }
+
+    drawMoodAtmosphere(ctx, dt) {
+      if (!this.moodManager) return;
+      const m = this.moodManager.getModifiers();
+
+      // Pass 1: Upper-Right Contrasting Celestial Horizon Rim Light (Screen Blend)
+      if (m.ambientBloomA > 0.005) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const cx = this.width * 0.82;
+        const cy = this.height * 0.12;
+        const rMax = Math.min(this.width, this.height) * 0.62;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rMax);
+        const r = Math.round(m.ambientBloomR);
+        const g = Math.round(m.ambientBloomG);
+        const b = Math.round(m.ambientBloomB);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${(m.ambientBloomA * 0.85).toFixed(3)})`);
+        grad.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, ${(m.ambientBloomA * 0.40).toFixed(3)})`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rMax, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Pass 2: Lower-Left Ambient Rim Starlight Glow (Screen Blend)
+      if (m.horizonA > 0.005) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const cx = this.width * 0.14;
+        const cy = this.height * 0.88;
+        const rMax = Math.min(this.width, this.height) * 0.52;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rMax);
+        const hr = Math.round(m.horizonR);
+        const hg = Math.round(m.horizonG);
+        const hb = Math.round(m.horizonB);
+        grad.addColorStop(0, `rgba(${hr}, ${hg}, ${hb}, ${(m.horizonA * 0.80).toFixed(3)})`);
+        grad.addColorStop(0.5, `rgba(${hr}, ${hg}, ${hb}, ${(m.horizonA * 0.35).toFixed(3)})`);
+        grad.addColorStop(1, `rgba(${hr}, ${hg}, ${hb}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rMax, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Pass 3: Extreme Outer Corner Grounding Vignette (Perimeter Only)
+      if (m.vignetteA > 0.005) {
+        ctx.save();
+        const cx = this.width * 0.5;
+        const cy = this.height * 0.5;
+        const rMin = Math.hypot(this.width, this.height) * 0.48;
+        const rMax = Math.hypot(this.width, this.height) * 0.74;
+        const vGrad = ctx.createRadialGradient(cx, cy, rMin, cx, cy, rMax);
+        const vr = Math.round(m.vignetteR);
+        const vg = Math.round(m.vignetteG);
+        const vb = Math.round(m.vignetteB);
+        vGrad.addColorStop(0, `rgba(${vr}, ${vg}, ${vb}, 0)`);
+        vGrad.addColorStop(1, `rgba(${vr}, ${vg}, ${vb}, ${(m.vignetteA * 0.5).toFixed(3)})`);
+        ctx.fillStyle = vGrad;
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.restore();
+      }
+
+      // 4. Dynamic Page-wide CSS Atmosphere Variable Injection (throttled to ~20fps)
+      const now = performance.now();
+      if (!this.lastMoodCssUpdate || now - this.lastMoodCssUpdate > 50) {
+        this.lastMoodCssUpdate = now;
+        const r = Math.round(m.ambientBloomR);
+        const g = Math.round(m.ambientBloomG);
+        const b = Math.round(m.ambientBloomB);
+        const a = m.ambientBloomA;
+        const hr = Math.round(m.horizonR);
+        const hg = Math.round(m.horizonG);
+        const hb = Math.round(m.horizonB);
+        const ha = m.horizonA;
+        const vr = Math.round(m.vignetteR);
+        const vg = Math.round(m.vignetteG);
+        const vb = Math.round(m.vignetteB);
+        const va = m.vignetteA;
+        const sr = Math.round(m.specularR);
+        const sg = Math.round(m.specularG);
+        const sb = Math.round(m.specularB);
+
+        const rootStyle = document.documentElement.style;
+        rootStyle.setProperty('--mood-ambient-tint', `rgba(${r}, ${g}, ${b}, ${(a * 0.75).toFixed(3)})`);
+        rootStyle.setProperty('--mood-ambient-glow', `rgba(${hr}, ${hg}, ${hb}, ${(ha * 0.75).toFixed(3)})`);
+        rootStyle.setProperty('--mood-shadow-tint', `rgba(${vr}, ${vg}, ${vb}, ${(va * 0.5).toFixed(3)})`);
+        rootStyle.setProperty('--mood-specular', `rgb(${sr}, ${sg}, ${sb})`);
+        rootStyle.setProperty('--mood-border-glow', `rgba(${sr}, ${sg}, ${sb}, ${(a * 0.5).toFixed(3)})`);
+        rootStyle.setProperty('--mood-glow-radius', `${(m.glowBloomRadius * 12).toFixed(1)}px`);
+        rootStyle.setProperty('--mood-pulse-speed', `${(1 / Math.max(0.2, m.pulseIntensity)).toFixed(2)}s`);
+      }
+    }
+
+    triggerMoodShiftAura(moodKey) {
+      if (this.reducedMotion) return;
+      const cx = this.width * 0.5;
+      const cy = this.height * 0.45;
+      const normalizedKey = (moodKey === 'serene' || moodKey === 'peaceful') ? 'peaceful' : moodKey;
+      const profile = MOOD_PROFILES[normalizedKey] || MOOD_PROFILES.neutral;
+      const color = profile.rippleColor || 'rgba(230, 197, 148, 0.8)';
+
+      for (let i = 0; i < 3; i++) {
+        this.ripples.push({
+          x: cx,
+          y: cy,
+          radius: 8 + i * 22,
+          maxRadius: Math.max(this.width, this.height) * 0.65,
+          alpha: 0.85 - i * 0.2,
+          speed: (4.5 + i * 1.6),
+          color: color
+        });
+      }
+
+      // Burst of shimmering stardust from center
+      const burstCount = 18;
+      for (let i = 0; i < burstCount; i++) {
+        const angle = (Math.PI * 2 * i) / burstCount + (Math.random() - 0.5) * 0.5;
+        const speed = Math.random() * 4.5 + 2.0;
+        this.sparkles.push({
+          x: cx,
+          y: cy,
+          r: Math.random() * 3.2 + 1.5,
+          dx: Math.cos(angle) * speed,
+          dy: Math.sin(angle) * speed,
+          alpha: 1.0,
+          decay: Math.random() * 0.018 + 0.012,
+          color: color
+        });
+      }
+    }
+
+    // ——— Interactive Pointer & Touch Physics ———
+    initPointerInteractions() {
+      const handlePointerMove = (e) => {
+        const x = e.clientX;
+        const y = e.clientY;
+        const prevX = this.pointer.x === -1000 ? x : this.pointer.x;
+        const prevY = this.pointer.y === -1000 ? y : this.pointer.y;
+        this.pointer.vx = (x - prevX) * 0.35;
+        this.pointer.vy = (y - prevY) * 0.35;
+        this.pointer.prevX = prevX;
+        this.pointer.prevY = prevY;
+        this.pointer.x = x;
+        this.pointer.y = y;
+        this.pointer.lastMove = performance.now();
+
+        // Spawn mode-specific interactive sparkles / ripples on movement
+        if (!this.reducedMotion && this.sparkles.length < 50) {
+          const speed = Math.hypot(this.pointer.vx, this.pointer.vy);
+          if (speed > 1.5) {
+            const mode = this.currentMode;
+            let color = 'rgba(230, 197, 148, 0.7)';
+            if (mode === 'magic') color = 'rgba(192, 132, 252, 0.85)';
+            else if (mode === 'ocean') color = 'rgba(56, 189, 248, 0.85)';
+            else if (mode === 'sakura') color = 'rgba(244, 114, 182, 0.85)';
+            else if (mode === 'forest') color = 'rgba(74, 222, 128, 0.75)';
+            else if (mode === 'cosmos' || mode === 'midnight') color = 'rgba(167, 139, 250, 0.8)';
+            else if (mode === 'autumn' || mode === 'sunset') color = 'rgba(251, 146, 60, 0.8)';
+
+            this.sparkles.push({
+              x: x + (Math.random() - 0.5) * 12,
+              y: y + (Math.random() - 0.5) * 12,
+              r: Math.random() * 2.2 + 1.0,
+              dx: this.pointer.vx * 0.2 + (Math.random() - 0.5) * 0.8,
+              dy: this.pointer.vy * 0.2 + (Math.random() - 0.5) * 0.8 - 0.3,
+              alpha: 0.9,
+              decay: Math.random() * 0.02 + 0.015,
+              color: color
+            });
+          }
+        }
+      };
+
+      const handlePointerDown = (e) => {
+        this.pointer.isDown = true;
+        this.pointer.x = e.clientX;
+        this.pointer.y = e.clientY;
+
+        // Spawn concentric ripple / shockwave on click or touch
+        if (!this.reducedMotion) {
+          const mode = this.currentMode;
+          let rippleColor = 'rgba(230, 197, 148, 0.6)';
+          if (mode === 'ocean') rippleColor = 'rgba(56, 189, 248, 0.75)';
+          else if (mode === 'magic') rippleColor = 'rgba(192, 132, 252, 0.75)';
+          else if (mode === 'rain') rippleColor = 'rgba(147, 197, 253, 0.75)';
+          else if (mode === 'sakura') rippleColor = 'rgba(244, 114, 182, 0.7)';
+          else if (mode === 'cosmos' || mode === 'midnight') rippleColor = 'rgba(196, 181, 253, 0.75)';
+
+          this.ripples.push({
+            x: e.clientX,
+            y: e.clientY,
+            radius: 4,
+            maxRadius: Math.min(this.width, this.height) * 0.18 + 40,
+            alpha: 0.8,
+            speed: 2.8,
+            color: rippleColor
+          });
+
+          // Burst of particles
+          const burstCount = 6;
+          for (let i = 0; i < burstCount; i++) {
+            const angle = (Math.PI * 2 * i) / burstCount + (Math.random() - 0.5) * 0.5;
+            const speed = Math.random() * 2.5 + 1.2;
+            this.sparkles.push({
+              x: e.clientX,
+              y: e.clientY,
+              r: Math.random() * 2.5 + 1.2,
+              dx: Math.cos(angle) * speed,
+              dy: Math.sin(angle) * speed,
+              alpha: 1.0,
+              decay: Math.random() * 0.025 + 0.02,
+              color: rippleColor
+            });
+          }
+        }
+      };
+
+      const handlePointerUp = () => {
+        this.pointer.isDown = false;
+      };
+
+      const handlePointerLeave = () => {
+        this.pointer.x = -1000;
+        this.pointer.y = -1000;
+        this.pointer.isDown = false;
+      };
+
+      // Register Pointer & Touch event listeners
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
+      window.addEventListener('pointerdown', handlePointerDown, { passive: true });
+      window.addEventListener('pointerup', handlePointerUp, { passive: true });
+      window.addEventListener('pointercancel', handlePointerLeave, { passive: true });
+      document.addEventListener('mouseleave', handlePointerLeave, { passive: true });
+    }
+
+    updateAndDrawPointerEffects(dt) {
+      if (this.reducedMotion) return;
+      const ctx = this.ctx;
+
+      // 1. Update and Draw Expanding Touch Ripples
+      for (let i = this.ripples.length - 1; i >= 0; i--) {
+        const r = this.ripples[i];
+        r.radius += r.speed * (dt * 60);
+        r.alpha -= 0.015 * (dt * 60);
+
+        if (r.alpha <= 0 || r.radius >= r.maxRadius) {
+          this.ripples.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${Math.max(0, r.alpha)})`);
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+
+        // Inner soft echo ring
+        if (r.radius > 15) {
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.radius * 0.65, 0, Math.PI * 2);
+          ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${Math.max(0, r.alpha * 0.4)})`);
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 2. Update and Draw Trailing Sparkles
+      for (let i = this.sparkles.length - 1; i >= 0; i--) {
+        const s = this.sparkles[i];
+        s.x += s.dx * (dt * 60);
+        s.y += s.dy * (dt * 60);
+        s.alpha -= s.decay * (dt * 60);
+
+        if (s.alpha <= 0) {
+          this.sparkles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = s.color.replace(/[\d\.]+\)$/, `${Math.max(0, s.alpha)})`);
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = s.color;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 3. Natural friction decay for pointer velocity
+      this.pointer.vx *= 0.88;
+      this.pointer.vy *= 0.88;
+    }
+
+    // Trigger an ambient luminous shockwave / ripple programmatically
+    triggerRipple(x, y) {
+      if (this.reducedMotion) return;
+      const posX = typeof x === 'number' ? x : this.width / 2;
+      const posY = typeof y === 'number' ? y : this.height / 2;
+      const mode = this.currentMode;
+
+      let rippleColor = 'rgba(230, 197, 148, 0.75)';
+      if (mode === 'ocean') rippleColor = 'rgba(56, 189, 248, 0.85)';
+      else if (mode === 'magic') rippleColor = 'rgba(192, 132, 252, 0.85)';
+      else if (mode === 'rain') rippleColor = 'rgba(147, 197, 253, 0.85)';
+      else if (mode === 'sakura') rippleColor = 'rgba(244, 114, 182, 0.8)';
+      else if (mode === 'cosmos' || mode === 'midnight') rippleColor = 'rgba(196, 181, 253, 0.85)';
+      else if (mode === 'sunset' || mode === 'autumn') rippleColor = 'rgba(245, 158, 11, 0.85)';
+
+      this.ripples.push({
+        x: posX,
+        y: posY,
+        radius: 8,
+        maxRadius: Math.min(this.width, this.height) * 0.35 + 80,
+        alpha: 0.9,
+        speed: 4.5,
+        color: rippleColor
+      });
+
+      // Ambient sparkling particle burst
+      const burstCount = 14;
+      for (let i = 0; i < burstCount; i++) {
+        const angle = (Math.PI * 2 * i) / burstCount + (Math.random() - 0.5) * 0.6;
+        const speed = Math.random() * 3.6 + 1.8;
+        this.sparkles.push({
+          x: posX,
+          y: posY,
+          r: Math.random() * 2.8 + 1.4,
+          dx: Math.cos(angle) * speed,
+          dy: Math.sin(angle) * speed,
+          alpha: 1.0,
+          decay: Math.random() * 0.02 + 0.015,
+          color: rippleColor
+        });
+      }
     }
 
     // ——— Effect Renderers Registry ———
@@ -355,24 +980,25 @@
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
           const color = '230, 225, 215';
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx;
-            p.y += p.dy;
+            p.x += p.dx * mood.particleSpeedMultiplier * (1 + (mood.movementVariance - 1) * 0.3);
+            p.y += p.dy * mood.particleSpeedMultiplier;
 
             if (p.x < -10) p.x = engine.width + 10;
             if (p.x > engine.width + 10) p.x = -10;
             if (p.y < -10) p.y = engine.height + 10;
             if (p.y > engine.height + 10) p.y = -10;
 
-            const currentOpacity = p.baseOpacity * (0.7 + 0.3 * Math.sin(time * p.pulseSpeed + p.pulseOffset));
+            const currentOpacity = p.baseOpacity * mood.particleOpacityMultiplier * (0.7 + 0.3 * Math.sin(time * p.pulseSpeed * mood.pulseIntensity + p.pulseOffset));
 
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${color}, ${currentOpacity})`;
+            ctx.fillStyle = `rgba(${color}, ${Math.max(0, currentOpacity)})`;
             ctx.shadowBlur = 4;
-            ctx.shadowColor = `rgba(${color}, ${currentOpacity * 0.5})`;
+            ctx.shadowColor = `rgba(${color}, ${Math.max(0, currentOpacity * 0.5)})`;
             ctx.fill();
           }
           ctx.shadowBlur = 0;
@@ -422,14 +1048,15 @@
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           // 1. Soft Atmospheric Magic Glow
           const cx = engine.width * 0.5;
           const cy = engine.height * 0.4;
           const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(engine.width, engine.height) * 0.65);
-          glowGrad.addColorStop(0, 'rgba(192, 132, 252, 0.06)');
-          glowGrad.addColorStop(0.35, 'rgba(236, 72, 153, 0.03)');
-          glowGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.015)');
+          glowGrad.addColorStop(0, `rgba(192, 132, 252, ${0.06 * mood.particleOpacityMultiplier})`);
+          glowGrad.addColorStop(0.35, `rgba(236, 72, 153, ${0.03 * mood.particleOpacityMultiplier})`);
+          glowGrad.addColorStop(0.7, `rgba(56, 189, 248, ${0.015 * mood.particleOpacityMultiplier})`);
           glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.save();
           ctx.fillStyle = glowGrad;
@@ -441,8 +1068,8 @@
           // 2. Render Continuous Mana Motes
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.y += p.dy;
-            p.x += p.dx + Math.sin(time * p.swayFreq + i) * 0.35;
+            p.y += p.dy * mood.particleSpeedMultiplier;
+            p.x += (p.dx * mood.particleSpeedMultiplier) + Math.sin(time * p.swayFreq * mood.wanderFrequency + i) * 0.35 * mood.movementVariance;
 
             // Loop smoothly around boundaries
             if (p.y < -15) {
@@ -452,22 +1079,22 @@
             if (p.x < -15) p.x = engine.width + 15;
             if (p.x > engine.width + 15) p.x = -15;
 
-            const pulse = 0.65 + 0.35 * Math.sin(time * p.pulseSpeed + p.pulseOffset);
-            const currentOpacity = p.baseOpacity * pulse;
+            const pulse = 0.65 + 0.35 * Math.sin(time * p.pulseSpeed * mood.pulseIntensity + p.pulseOffset);
+            const currentOpacity = p.baseOpacity * mood.particleOpacityMultiplier * pulse;
 
             ctx.save();
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${p.color}, ${currentOpacity})`;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = `rgba(${p.color}, ${currentOpacity * 0.8})`;
+            ctx.fillStyle = `rgba(${p.color}, ${Math.max(0, currentOpacity)})`;
+            ctx.shadowBlur = 8 * mood.pulseIntensity;
+            ctx.shadowColor = `rgba(${p.color}, ${Math.max(0, currentOpacity * 0.8)})`;
             ctx.fill();
 
             // Specular core on larger mana sparks
             if (p.r > 1.8) {
               ctx.beginPath();
               ctx.arc(p.x, p.y, p.r * 0.4, 0, Math.PI * 2);
-              ctx.fillStyle = `rgba(255, 255, 255, ${currentOpacity * 0.9})`;
+              ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, currentOpacity * 0.9)})`;
               ctx.fill();
             }
             ctx.restore();
@@ -481,10 +1108,11 @@
             const y = Math.random() * (engine.height * 0.6) + engine.height * 0.2;
             const size = Math.random() * 70 + 60;
             const rotate = Math.random() * Math.PI * 2;
-            const duration = 6000 + Math.random() * 5000;
+            const duration = (6000 + Math.random() * 5000) / Math.max(0.5, mood.movementSpeedMultiplier);
 
-            // Next event in 2.5 - 5 seconds
-            engine.eventTimer = performance.now() + 3000 + Math.random() * 2500;
+            // Next event scaled by mood activity level
+            const nextDelay = (3000 + Math.random() * 2500) / Math.max(0.3, mood.activityLevel);
+            engine.eventTimer = performance.now() + nextDelay;
 
             const magicColors = [
               { stroke: '#c084fc', fill: 'rgba(192, 132, 252, 0.18)', glow: '#c084fc' },
@@ -512,7 +1140,7 @@
             const fadeInFactor = Math.min(1, elapsed / ev.fadeIn);
             const remaining = ev.life - elapsed;
             const fadeOutFactor = Math.max(0, Math.min(1, remaining / ev.fadeOut));
-            const opacity = fadeInFactor * fadeOutFactor * 0.88;
+            const opacity = fadeInFactor * fadeOutFactor * 0.88 * mood.particleOpacityMultiplier;
 
             if (opacity <= 0.01 || ev.progress >= 1) {
               engine.events.splice(e, 1);
@@ -525,10 +1153,10 @@
 
             if (ev.type === 'circle') {
               // Detailed Arcane Magic Circle with rotating rings & runes
-              ctx.rotate(ev.rotate + time * 0.15);
+              ctx.rotate(ev.rotate + time * 0.15 * mood.movementSpeedMultiplier);
               ctx.strokeStyle = ev.col.stroke;
               ctx.fillStyle = ev.col.fill;
-              ctx.shadowBlur = 14;
+              ctx.shadowBlur = 14 * mood.pulseIntensity;
               ctx.shadowColor = ev.col.glow;
 
               // Outer Ring
@@ -547,7 +1175,7 @@
               const points = 6;
               ctx.beginPath();
               for (let i = 0; i < points; i++) {
-                const angle = (i / points) * Math.PI * 2 + time * 0.1;
+                const angle = (i / points) * Math.PI * 2 + time * 0.1 * mood.movementSpeedMultiplier;
                 const r = i % 2 === 0 ? ev.size * 0.38 : ev.size * 0.22;
                 const px = Math.cos(angle) * r;
                 const py = Math.sin(angle) * r;
@@ -567,11 +1195,11 @@
 
             } else if (ev.type === 'rune') {
               // Glowing Ancient Runic Glyph
-              ctx.rotate(ev.rotate + Math.sin(time * 0.5) * 0.1);
+              ctx.rotate(ev.rotate + Math.sin(time * 0.5 * mood.wanderFrequency) * 0.1 * mood.movementVariance);
               ctx.strokeStyle = ev.col.stroke;
               ctx.fillStyle = ev.col.fill;
               ctx.lineWidth = 2.0;
-              ctx.shadowBlur = 16;
+              ctx.shadowBlur = 16 * mood.pulseIntensity;
               ctx.shadowColor = ev.col.glow;
 
               // Diamond Frame
@@ -596,94 +1224,58 @@
             } else if (ev.type === 'passingSpell') {
               // Sweeping Comet-like Magic Arc
               const trailProgress = ev.progress;
-              const arcX = Math.cos(trailProgress * Math.PI) * (ev.size * 1.4);
-              const arcY = Math.sin(trailProgress * Math.PI) * (ev.size * 0.7);
+              const angle = ev.rotate;
+              const sweepLen = ev.size * 1.5;
+              const curX = Math.cos(angle) * (trailProgress * sweepLen - sweepLen * 0.5);
+              const curY = Math.sin(angle) * (trailProgress * sweepLen - sweepLen * 0.5);
 
-              ctx.strokeStyle = ev.col.stroke;
-              ctx.lineWidth = 3.0;
-              ctx.shadowBlur = 18;
-              ctx.shadowColor = ev.col.glow;
+              const cometGrad = ctx.createRadialGradient(curX, curY, 0, curX, curY, ev.size * 0.4);
+              cometGrad.addColorStop(0, '#ffffff');
+              cometGrad.addColorStop(0.3, ev.col.stroke);
+              cometGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
+              ctx.fillStyle = cometGrad;
               ctx.beginPath();
-              ctx.arc(0, 0, ev.size * 0.7, 0, trailProgress * Math.PI * 2);
-              ctx.stroke();
-
-              // Glowing Spell Head
-              ctx.beginPath();
-              ctx.arc(arcX, arcY, 4, 0, Math.PI * 2);
-              ctx.fillStyle = '#ffffff';
+              ctx.arc(curX, curY, ev.size * 0.35, 0, Math.PI * 2);
               ctx.fill();
 
-            } else if (ev.type === 'glyphs') {
-              // Ethereal Floating Glyphs
-              const glyphChars = ['✧', '✦', 'ᛟ', 'ᚱ', '✦'];
-              ctx.font = '20px serif';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.shadowBlur = 12;
-              ctx.shadowColor = ev.col.glow;
-
-              for (let g = 0; g < glyphChars.length; g++) {
-                const gx = (g - 2) * (ev.size * 0.28) + Math.sin(time * 1.5 + g) * 6;
-                const gy = -ev.progress * 40 + Math.cos(time + g) * 8;
-                ctx.fillStyle = ev.col.stroke;
-                ctx.fillText(glyphChars[g], gx, gy);
-              }
-
             } else if (ev.type === 'fireflies') {
-              // Dancing Whispering Wisps
-              const count = 7;
-              for (let f = 0; f < count; f++) {
-                const fx = Math.sin(time * 1.4 + f * 1.2) * (ev.size * 0.5);
-                const fy = Math.cos(time * 1.1 + f * 0.9) * (ev.size * 0.4);
-                const fr = 2.5 + Math.sin(time * 3 + f) * 1.0;
+              // Cluster of dancing magical motes
+              const swarmCount = 7;
+              for (let f = 0; f < swarmCount; f++) {
+                const fa = (f / swarmCount) * Math.PI * 2 + time * 0.8 * mood.movementSpeedMultiplier;
+                const fx = Math.cos(fa) * (ev.size * 0.35) + Math.sin(time * 1.5 + f) * 8 * mood.movementVariance;
+                const fy = Math.sin(fa) * (ev.size * 0.25) + Math.cos(time * 1.3 + f) * 8 * mood.movementVariance;
 
-                ctx.save();
                 ctx.beginPath();
-                ctx.arc(fx, fy, fr, 0, Math.PI * 2);
-                ctx.fillStyle = ev.col.stroke;
-                ctx.shadowBlur = 14;
+                ctx.arc(fx, fy, 2.4, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 10 * mood.pulseIntensity;
                 ctx.shadowColor = ev.col.glow;
                 ctx.fill();
-
-                // Core glint
-                ctx.beginPath();
-                ctx.arc(fx, fy, fr * 0.4, 0, Math.PI * 2);
-                ctx.fillStyle = '#ffffff';
-                ctx.fill();
-                ctx.restore();
               }
 
             } else if (ev.type === 'ripple') {
-              // Dimensional Arcane Energy Pulse
+              // Expanding Magical Glyphic Shockwave
               const r = ev.size * 0.5 * ev.progress;
               ctx.strokeStyle = ev.col.stroke;
-              ctx.lineWidth = 2.2 * (1 - ev.progress * 0.5);
-              ctx.shadowBlur = 15;
+              ctx.lineWidth = 1.8;
+              ctx.shadowBlur = 12 * mood.pulseIntensity;
               ctx.shadowColor = ev.col.glow;
-
               ctx.beginPath();
               ctx.arc(0, 0, r, 0, Math.PI * 2);
               ctx.stroke();
 
-              // Secondary faint ripple
-              if (r > 15) {
-                ctx.lineWidth = 1.0;
-                ctx.beginPath();
-                ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2);
-                ctx.stroke();
-              }
-
             } else if (ev.type === 'burst') {
-              // Radiant Starlight Bloom
+              // Concentric Starlight Burst
               const rays = 12;
               const fr = ev.size * 0.45 * Math.sin(ev.progress * Math.PI);
               ctx.fillStyle = ev.col.stroke;
-              ctx.shadowBlur = 14;
+              ctx.shadowBlur = 14 * mood.pulseIntensity;
               ctx.shadowColor = ev.col.glow;
 
               for (let p = 0; p < rays; p++) {
-                const angle = (p / rays) * Math.PI * 2 + time * 0.2;
+                const angle = (p / rays) * Math.PI * 2 + time * 0.2 * mood.movementSpeedMultiplier;
                 const px = Math.cos(angle) * fr;
                 const py = Math.sin(angle) * fr;
 
@@ -694,13 +1286,13 @@
 
             } else if (ev.type === 'orb') {
               // Luminous Wandering Mana Orb with Satellites
-              const ox = Math.sin(time * 0.7) * (ev.size * 0.4);
-              const oy = Math.cos(time * 0.5) * (ev.size * 0.25);
+              const ox = Math.sin(time * 0.7 * mood.wanderFrequency) * (ev.size * 0.4 * mood.movementVariance);
+              const oy = Math.cos(time * 0.5 * mood.wanderFrequency) * (ev.size * 0.25 * mood.movementVariance);
 
               ctx.beginPath();
               ctx.arc(ox, oy, 7, 0, Math.PI * 2);
               ctx.fillStyle = '#ffffff';
-              ctx.shadowBlur = 20;
+              ctx.shadowBlur = 20 * mood.pulseIntensity;
               ctx.shadowColor = ev.col.glow;
               ctx.fill();
 
@@ -712,7 +1304,7 @@
 
               // Orbiting tiny sparks
               for (let s = 0; s < 3; s++) {
-                const sAngle = time * 2.5 + (s / 3) * Math.PI * 2;
+                const sAngle = time * 2.5 * mood.movementSpeedMultiplier + (s / 3) * Math.PI * 2;
                 const sx = ox + Math.cos(sAngle) * 16;
                 const sy = oy + Math.sin(sAngle) * 16;
                 ctx.beginPath();
@@ -726,6 +1318,8 @@
           }
         }
       };
+
+      // ============================================================
       // 3. CANOPY LEAVES (Forest Mode)
       // ============================================================
       this.effectRenderers.leaves = {
@@ -760,12 +1354,13 @@
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx + Math.sin(time * p.swayFreq + p.swayOffset) * p.swayAmp;
-            p.y += p.dy;
-            p.rot += p.rotSpeed;
+            p.x += (p.dx * mood.particleSpeedMultiplier) + Math.sin(time * p.swayFreq * mood.wanderFrequency + p.swayOffset) * p.swayAmp * mood.movementVariance;
+            p.y += p.dy * mood.particleSpeedMultiplier;
+            p.rot += p.rotSpeed * mood.movementVariance;
 
             if (p.y > engine.height + 20) {
               p.y = -20;
@@ -776,10 +1371,20 @@
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.rotate(p.rot);
+            ctx.globalAlpha = mood.particleOpacityMultiplier;
             ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.ellipse(0, 0, p.r * 1.8, p.r * 0.8, 0, 0, Math.PI * 2);
             ctx.fill();
+
+            if (mood.ambientBloomA > 0.02) {
+              const sr = Math.round(mood.specularR);
+              const sg = Math.round(mood.specularG);
+              const sb = Math.round(mood.specularB);
+              ctx.strokeStyle = `rgba(${sr}, ${sg}, ${sb}, ${(mood.ambientBloomA * 0.75).toFixed(3)})`;
+              ctx.lineWidth = 0.6;
+              ctx.stroke();
+            }
             ctx.restore();
           }
         }
@@ -798,28 +1403,31 @@
             engine.particles.push({
               x: Math.random() * engine.width,
               y: Math.random() * engine.height,
-              r: Math.random() * 3.5 + 1.2,
+              r: Math.random() * 3.5 + 1.5,
+              opacity: Math.random() * 0.45 + 0.2,
               dy: -(Math.random() * 0.7 + 0.35),
-              wobbleFreq: Math.random() * 1.2 + 0.6,
+              wobbleSpeed: Math.random() * 1.2 + 0.6,
               wobbleAmp: Math.random() * 0.8 + 0.3,
-              wobbleOffset: Math.random() * Math.PI * 2,
-              opacity: Math.random() * 0.5 + 0.3
+              wobbleOffset: Math.random() * Math.PI * 2
             });
           }
         },
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.y += p.dy;
-            p.x += Math.sin(time * p.wobbleFreq + p.wobbleOffset) * 0.35;
+            p.y += p.dy * mood.particleSpeedMultiplier;
+            p.x += Math.sin(time * p.wobbleSpeed * mood.wanderFrequency + p.wobbleOffset) * (p.wobbleAmp * mood.movementVariance);
 
             if (p.y < -20) {
               p.y = engine.height + 20;
               p.x = Math.random() * engine.width;
             }
+
+            const currentAlpha = p.opacity * mood.particleOpacityMultiplier * (0.8 + 0.2 * Math.sin(time * 1.5 * mood.pulseIntensity + p.wobbleOffset));
 
             ctx.save();
             ctx.translate(p.x, p.y);
@@ -827,18 +1435,18 @@
             // Bubble body
             ctx.beginPath();
             ctx.arc(0, 0, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(56, 189, 248, ${p.opacity * 0.15})`;
+            ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0, currentAlpha * 0.15)})`;
             ctx.fill();
 
             // Bubble rim highlight
-            ctx.strokeStyle = `rgba(186, 230, 253, ${p.opacity * 0.75})`;
+            ctx.strokeStyle = `rgba(186, 230, 253, ${Math.max(0, currentAlpha * 0.75)})`;
             ctx.lineWidth = 1;
             ctx.stroke();
 
             // Specular reflection glint
             ctx.beginPath();
             ctx.arc(-p.r * 0.32, -p.r * 0.32, Math.max(0.6, p.r * 0.24), 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity * 0.85})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, currentAlpha * 0.85)})`;
             ctx.fill();
 
             ctx.restore();
@@ -876,6 +1484,7 @@
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           // 1. Soft radial golden sunlight wash originating from the TOP RIGHT
           const cx = engine.width * 0.92;
@@ -883,10 +1492,10 @@
           const maxDist = Math.hypot(engine.width, engine.height) * 0.95;
 
           const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxDist);
-          glowGrad.addColorStop(0, 'rgba(251, 146, 60, 0.14)');
-          glowGrad.addColorStop(0.25, 'rgba(245, 158, 11, 0.09)');
-          glowGrad.addColorStop(0.55, 'rgba(244, 63, 94, 0.04)');
-          glowGrad.addColorStop(0.85, 'rgba(147, 51, 234, 0.015)');
+          glowGrad.addColorStop(0, `rgba(251, 146, 60, ${0.14 * mood.particleOpacityMultiplier})`);
+          glowGrad.addColorStop(0.25, `rgba(245, 158, 11, ${0.09 * mood.particleOpacityMultiplier})`);
+          glowGrad.addColorStop(0.55, `rgba(244, 63, 94, ${0.04 * mood.particleOpacityMultiplier})`);
+          glowGrad.addColorStop(0.85, `rgba(147, 51, 234, ${0.015 * mood.particleOpacityMultiplier})`);
           glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
           ctx.save();
@@ -897,15 +1506,15 @@
           ctx.restore();
 
           // 2. Angled Volumetric Golden Light Rays from Top-Right down-left
-          const swayX = Math.sin(time * 0.35) * 30;
+          const swayX = Math.sin(time * 0.35 * mood.wanderFrequency) * 30 * mood.movementVariance;
           const rayOriginX = cx + swayX;
           const rayOriginY = cy;
 
           ctx.save();
           // Primary broad golden beam
           const beamGrad = ctx.createLinearGradient(rayOriginX, rayOriginY, engine.width * 0.3, engine.height * 0.85);
-          beamGrad.addColorStop(0, 'rgba(251, 146, 60, 0.12)');
-          beamGrad.addColorStop(0.4, 'rgba(245, 158, 11, 0.07)');
+          beamGrad.addColorStop(0, `rgba(251, 146, 60, ${0.12 * mood.pulseIntensity})`);
+          beamGrad.addColorStop(0.4, `rgba(245, 158, 11, ${0.07 * mood.pulseIntensity})`);
           beamGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
           ctx.fillStyle = beamGrad;
@@ -919,8 +1528,8 @@
 
           // Secondary soft ambient ray
           const beamGrad2 = ctx.createLinearGradient(rayOriginX + 50, rayOriginY, engine.width * 0.6, engine.height * 0.9);
-          beamGrad2.addColorStop(0, 'rgba(254, 215, 170, 0.09)');
-          beamGrad2.addColorStop(0.5, 'rgba(249, 115, 22, 0.04)');
+          beamGrad2.addColorStop(0, `rgba(254, 215, 170, ${0.09 * mood.pulseIntensity})`);
+          beamGrad2.addColorStop(0.5, `rgba(249, 115, 22, ${0.04 * mood.pulseIntensity})`);
           beamGrad2.addColorStop(1, 'rgba(0,0,0,0)');
 
           ctx.fillStyle = beamGrad2;
@@ -936,18 +1545,18 @@
           // 3. Golden dusk motes drifting through the sunlight
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx + Math.sin(time * p.swayFreq + i) * 0.35;
-            p.y += p.dy + Math.sin(time * 0.5 + i * 0.7) * 0.2;
+            p.x += (p.dx * mood.movementSpeedMultiplier) + Math.sin(time * p.swayFreq * mood.wanderFrequency + i) * 0.35 * mood.movementVariance;
+            p.y += (p.dy * mood.movementSpeedMultiplier) + Math.sin(time * 0.5 + i * 0.7) * 0.2;
 
             if (p.x < -15) { p.x = engine.width + 15; p.y = Math.random() * engine.height; }
             if (p.y > engine.height + 15) { p.y = -15; p.x = Math.random() * engine.width; }
 
-            const opacity = Math.max(0.1, p.baseOpacity * (0.7 + 0.3 * Math.sin(time * p.pulseSpeed + p.pulseOffset)));
+            const opacity = Math.max(0.05, p.baseOpacity * mood.particleOpacityMultiplier * (0.7 + 0.3 * Math.sin(time * p.pulseSpeed * mood.pulseIntensity + p.pulseOffset)));
             ctx.save();
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(${p.color}, ${opacity})`;
-            ctx.shadowBlur = 8;
+            ctx.shadowBlur = 6 * mood.pulseIntensity;
             ctx.shadowColor = `rgba(${p.color}, ${opacity * 0.8})`;
             ctx.fill();
             ctx.restore();
@@ -956,133 +1565,110 @@
       };
 
       // ============================================================
-      // 6. COSMOS LIVING SPACE SCENE (Cosmos Mode)
-      // Depth parallax starfield, twinkling stars, multi-directional shooting stars, & large realistic asteroids
+      // 6. DEEP COSMOS STARFIELD & ORBITING ASTEROIDS (Cosmos Mode)
+      // Realistic multi-tier star parallax, craters, starlight & shooting stars
       // ============================================================
       this.effectRenderers.cosmosSpace = {
         init: (engine) => {
           const isMobile = engine.width <= 768;
-          const starCount = isMobile ? 150 : 300;
+          const starCount = isMobile ? 55 : 120;
           engine.particles = [];
           engine.meteors = [];
-          engine.meteorSparks = [];
+          engine.bursts = [];
           engine.asteroids = [];
 
-          // 1. Layered Parallax Starfield
+          // 1. Generate Deep Parallax Stars
           for (let i = 0; i < starCount; i++) {
-            const depth = Math.random(); // 0 = distant tiny, 1 = bright foreground
+            const depth = Math.random(); // 0 = far, 1 = near
             engine.particles.push({
               x: Math.random() * engine.width,
               y: Math.random() * engine.height,
-              r: depth > 0.85 ? Math.random() * 1.6 + 1.1 : Math.random() * 0.9 + 0.4,
-              depth,
-              dx: (depth * 0.15 + 0.03), // subtle slow cosmic drift
-              twinkleSpeed: Math.random() * 1.5 + 0.5,
+              r: depth * 1.5 + 0.4,
+              opacity: depth * 0.5 + 0.35,
+              twinkleSpeed: Math.random() * 2.0 + 0.8,
               twinkleOffset: Math.random() * Math.PI * 2,
-              hasFlare: depth > 0.90
+              hasFlare: depth > 0.85 && Math.random() > 0.4,
+              color: depth > 0.75 ? (Math.random() > 0.5 ? '216, 180, 254' : '186, 230, 253') : '255, 255, 255'
             });
           }
 
-          // 2. Large Realistic Asteroids with Pseudo-Fixed Majestic Orbital Drifting
-          const asteroidConfigs = isMobile ? [
-            { anchorXRatio: 0.15, anchorYRatio: 0.22, baseRadius: 28, orbitRx: 28, orbitRy: 18, orbitSpeed: 0.08, rotSpeed: 0.005, isLarge: true },
-            { anchorXRatio: 0.85, anchorYRatio: 0.68, baseRadius: 22, orbitRx: 30, orbitRy: 20, orbitSpeed: 0.06, rotSpeed: -0.007, isLarge: true },
-            { anchorXRatio: 0.70, anchorYRatio: 0.15, baseRadius: 14, orbitRx: 20, orbitRy: 14, orbitSpeed: 0.10, rotSpeed: 0.009, isLarge: false }
-          ] : [
-            { anchorXRatio: 0.14, anchorYRatio: 0.24, baseRadius: 50, orbitRx: 55, orbitRy: 35, orbitSpeed: 0.07, rotSpeed: 0.004, isLarge: true },
-            { anchorXRatio: 0.86, anchorYRatio: 0.40, baseRadius: 40, orbitRx: 45, orbitRy: 28, orbitSpeed: 0.05, rotSpeed: -0.006, isLarge: true },
-            { anchorXRatio: 0.72, anchorYRatio: 0.18, baseRadius: 25, orbitRx: 35, orbitRy: 22, orbitSpeed: 0.08, rotSpeed: 0.008, isLarge: true },
-            { anchorXRatio: 0.32, anchorYRatio: 0.82, baseRadius: 18, orbitRx: 30, orbitRy: 18, orbitSpeed: 0.08, rotSpeed: -0.010, isLarge: false },
-            { anchorXRatio: 0.52, anchorYRatio: 0.08, baseRadius: 12, orbitRx: 25, orbitRy: 15, orbitSpeed: 0.10, rotSpeed: 0.012, isLarge: false }
-          ];
-
-          engine.asteroids = asteroidConfigs.map((cfg, idx) => {
-            const numVerts = cfg.isLarge ? 18 : 12;
+          // 2. Generate Realistic Procedural Asteroids
+          const asteroidCount = isMobile ? 1 : 2;
+          for (let a = 0; a < asteroidCount; a++) {
+            const baseRadius = a === 0 ? (isMobile ? 22 : 36) : (isMobile ? 14 : 20);
             const vertices = [];
-            const seed = Math.random() * 100;
+            const numVerts = 14;
+
             for (let v = 0; v < numVerts; v++) {
               const angle = (v / numVerts) * Math.PI * 2;
-              const noise = 0.82 + 0.18 * Math.sin(angle * 3 + seed) + 0.09 * Math.cos(angle * 5 + seed * 1.5);
+              const distNoise = baseRadius * (0.75 + Math.random() * 0.5);
               vertices.push({
-                x: Math.cos(angle) * cfg.baseRadius * noise,
-                y: Math.sin(angle) * cfg.baseRadius * noise
+                x: Math.cos(angle) * distNoise,
+                y: Math.sin(angle) * distNoise
               });
             }
 
-            // Realistic 3D Surface Craters
             const craters = [];
-            if (cfg.isLarge) {
-              const craterCount = cfg.baseRadius > 60 ? 5 : 3;
-              for (let c = 0; c < craterCount; c++) {
-                const cAngle = Math.random() * Math.PI * 2;
-                const cDist = Math.random() * (cfg.baseRadius * 0.65);
-                craters.push({
-                  cx: Math.cos(cAngle) * cDist,
-                  cy: Math.sin(cAngle) * cDist,
-                  cr: Math.random() * (cfg.baseRadius * 0.18) + (cfg.baseRadius * 0.08)
-                });
-              }
+            const craterCount = a === 0 ? 4 : 2;
+            for (let c = 0; c < craterCount; c++) {
+              const cAngle = Math.random() * Math.PI * 2;
+              const cDist = Math.random() * (baseRadius * 0.55);
+              craters.push({
+                cx: Math.cos(cAngle) * cDist,
+                cy: Math.sin(cAngle) * cDist,
+                cr: Math.random() * (baseRadius * 0.22) + 2.5
+              });
             }
 
-            // Surface Geological Ridge Lines
             const ridges = [];
-            if (cfg.isLarge) {
-              for (let r = 0; r < 2; r++) {
-                ridges.push({
-                  x1: (Math.random() - 0.5) * cfg.baseRadius * 0.8,
-                  y1: (Math.random() - 0.5) * cfg.baseRadius * 0.8,
-                  x2: (Math.random() - 0.5) * cfg.baseRadius * 0.8,
-                  y2: (Math.random() - 0.5) * cfg.baseRadius * 0.8
-                });
-              }
+            for (let r = 0; r < 3; r++) {
+              ridges.push({
+                x1: (Math.random() - 0.5) * baseRadius * 0.9,
+                y1: (Math.random() - 0.5) * baseRadius * 0.9,
+                x2: (Math.random() - 0.5) * baseRadius * 0.9,
+                y2: (Math.random() - 0.5) * baseRadius * 0.9
+              });
             }
 
-            return {
-              anchorXRatio: cfg.anchorXRatio,
-              anchorYRatio: cfg.anchorYRatio,
-              baseRadius: cfg.baseRadius,
-              orbitRx: cfg.orbitRx,
-              orbitRy: cfg.orbitRy,
-              orbitSpeed: cfg.orbitSpeed,
-              orbitPhase: (idx / asteroidConfigs.length) * Math.PI * 2,
-              rotSpeed: cfg.rotSpeed,
+            engine.asteroids.push({
+              anchorXRatio: a === 0 ? 0.82 : 0.16,
+              anchorYRatio: a === 0 ? 0.24 : 0.72,
+              orbitRx: a === 0 ? 28 : 18,
+              orbitRy: a === 0 ? 18 : 12,
+              orbitSpeed: (a === 0 ? 0.15 : 0.22) * 0.7,
+              orbitPhase: a * 2.2,
               rot: Math.random() * Math.PI * 2,
+              rotSpeed: (a === 0 ? 0.0018 : -0.0025),
+              baseRadius,
               vertices,
               craters,
               ridges,
-              isLarge: cfg.isLarge,
-              opacity: 0.95
-            };
-          });
+              isLarge: a === 0
+            });
+          }
 
-          // Schedule first shooting star quickly (1.2 - 2.5 seconds after entering mode)
-          engine.nextMeteorTime = performance.now() + 1200 + Math.random() * 1300;
+          engine.nextMeteorTime = performance.now() + 2000;
         },
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
-          // 1. Render Starfield
+          // 1. Render Stars
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx;
-            if (p.x > engine.width + 5) p.x = -5;
-            p.y += 0.03;
-            if (p.y > engine.height + 5) p.y = -5;
-
-            const twinkle = Math.pow(Math.sin(time * p.twinkleSpeed + p.twinkleOffset), 4);
-            const currentOpacity = 0.2 + 0.8 * twinkle;
+            const twinkle = 0.5 + 0.5 * Math.sin(time * p.twinkleSpeed * mood.pulseIntensity + p.twinkleOffset);
+            const currentOpacity = p.opacity * mood.particleOpacityMultiplier * twinkle;
 
             ctx.save();
-            ctx.fillStyle = '#eae4f8';
-            ctx.globalAlpha = currentOpacity;
+            ctx.fillStyle = `rgba(${p.color}, ${Math.max(0, currentOpacity)})`;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
             ctx.fill();
 
             // 4-point glint on bright prominent stars
             if (p.hasFlare && twinkle > 0.65) {
-              ctx.strokeStyle = `rgba(167, 139, 250, ${twinkle * 0.75})`;
+              ctx.strokeStyle = `rgba(167, 139, 250, ${Math.max(0, twinkle * 0.75 * mood.pulseIntensity)})`;
               ctx.lineWidth = 0.8;
               const len = p.r * 2.8;
               ctx.beginPath();
@@ -1099,36 +1685,32 @@
           for (let a = 0; a < engine.asteroids.length; a++) {
             const ast = engine.asteroids[a];
 
-            // Pseudo-fixed majestic orbital floating around anchor
             const anchorX = engine.width * ast.anchorXRatio;
             const anchorY = engine.height * ast.anchorYRatio;
-            const posX = anchorX + Math.cos(time * ast.orbitSpeed + ast.orbitPhase) * ast.orbitRx;
-            const posY = anchorY + Math.sin(time * ast.orbitSpeed * 0.7 + ast.orbitPhase) * ast.orbitRy;
-            ast.rot += ast.rotSpeed;
+            const posX = anchorX + Math.cos(time * ast.orbitSpeed * mood.movementSpeedMultiplier + ast.orbitPhase) * ast.orbitRx;
+            const posY = anchorY + Math.sin(time * ast.orbitSpeed * 0.7 * mood.movementSpeedMultiplier + ast.orbitPhase) * ast.orbitRy;
+            ast.rot += ast.rotSpeed * mood.movementSpeedMultiplier;
 
             ctx.save();
             ctx.translate(posX, posY);
             ctx.rotate(ast.rot);
 
-            // Soft ambient cosmic back-glow on lit silhouette
             ctx.shadowBlur = ast.isLarge ? 18 : 8;
             ctx.shadowColor = 'rgba(196, 181, 253, 0.45)';
 
-            // Realistic directional 3D spherical shading (starlight from top-left)
             const grad = ctx.createRadialGradient(
               -ast.baseRadius * 0.35, -ast.baseRadius * 0.35, ast.baseRadius * 0.1,
               0, 0, ast.baseRadius * 1.15
             );
-            grad.addColorStop(0, '#94a3b8');               // Bright highlit face
-            grad.addColorStop(0.35, '#475569');            // Mid rocky tone
-            grad.addColorStop(0.70, '#1e1b4b');            // Deep cosmic indigo shadow
-            grad.addColorStop(1, '#090d16');               // Dark umbra side
+            grad.addColorStop(0, '#94a3b8');
+            grad.addColorStop(0.35, '#475569');
+            grad.addColorStop(0.70, '#1e1b4b');
+            grad.addColorStop(1, '#090d16');
 
             ctx.fillStyle = grad;
-            ctx.strokeStyle = 'rgba(216, 180, 254, 0.75)'; // Starlight rim reflection
+            ctx.strokeStyle = 'rgba(216, 180, 254, 0.75)';
             ctx.lineWidth = ast.isLarge ? 1.5 : 1.0;
 
-            // Draw smooth organic craggy polygon
             ctx.beginPath();
             if (ast.vertices && ast.vertices.length > 0) {
               const verts = ast.vertices;
@@ -1148,15 +1730,12 @@
             if (ast.craters) {
               for (let c = 0; c < ast.craters.length; c++) {
                 const cr = ast.craters[c];
-
-                // Inner crater shadow bowl
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(cr.cx, cr.cy, cr.cr, 0, Math.PI * 2);
                 ctx.fillStyle = '#090d16';
                 ctx.fill();
 
-                // Raised illuminated crater rim crescent (facing top-left light)
                 ctx.beginPath();
                 ctx.arc(cr.cx - cr.cr * 0.15, cr.cy - cr.cr * 0.15, cr.cr * 0.9, 0, Math.PI * 2);
                 ctx.strokeStyle = 'rgba(196, 181, 253, 0.6)';
@@ -1184,101 +1763,70 @@
             ctx.restore();
           }
 
-          // 3. Multi-Directional Shooting Stars (Diverse spawn zones & trajectory angles)
+          // 3. Multi-Directional Shooting Stars
           if (performance.now() > engine.nextMeteorTime && engine.meteors.length === 0) {
-            // Next meteor in 4.5 - 8.0 seconds
-            engine.nextMeteorTime = performance.now() + 4500 + Math.random() * 3500;
+            const meteorDelay = (4500 + Math.random() * 3500) / Math.max(0.3, mood.activityLevel);
+            engine.nextMeteorTime = performance.now() + meteorDelay;
 
-            // Choose from 4 diverse trajectory patterns across the sky
             const trajectoryType = Math.floor(Math.random() * 4);
             let startX, startY, angle;
 
             if (trajectoryType === 0) {
-              // Top-Left to Down-Right
               startX = Math.random() * (engine.width * 0.45) - 20;
-              startY = Math.random() * (engine.height * 0.25) - 20;
-              angle = 0.55 + Math.random() * 0.25; // ~32° to 46° down-right
+              startY = Math.random() * (engine.height * 0.35) - 20;
+              angle = Math.PI * 0.22 + (Math.random() - 0.5) * 0.25;
             } else if (trajectoryType === 1) {
-              // Top-Right to Down-Left
-              startX = Math.random() * (engine.width * 0.45) + (engine.width * 0.55);
-              startY = Math.random() * (engine.height * 0.25) - 20;
-              angle = Math.PI - (0.55 + Math.random() * 0.25); // ~134° to 148° down-left
+              startX = Math.random() * (engine.width * 0.45) + engine.width * 0.55;
+              startY = Math.random() * (engine.height * 0.35) - 20;
+              angle = Math.PI * 0.78 + (Math.random() - 0.5) * 0.25;
             } else if (trajectoryType === 2) {
-              // Left Horizon sweep
-              startX = -20;
-              startY = Math.random() * (engine.height * 0.35);
-              angle = 0.35 + Math.random() * 0.22; // ~20° to 33° shallow sweep
+              startX = Math.random() * (engine.width * 0.7) + engine.width * 0.15;
+              startY = -30;
+              angle = Math.PI * 0.5 + (Math.random() - 0.5) * 0.3;
             } else {
-              // Right Horizon sweep
-              startX = engine.width + 20;
-              startY = Math.random() * (engine.height * 0.35);
-              angle = Math.PI - (0.35 + Math.random() * 0.22); // ~147° to 160° shallow sweep
+              startX = -30;
+              startY = Math.random() * (engine.height * 0.5) + 30;
+              angle = Math.PI * 0.12 + (Math.random() - 0.5) * 0.15;
             }
 
-            const speed = Math.random() * 10 + 16;
-            const length = Math.random() * 120 + 220; // Long, striking tail (220 - 340px)
-
-            // Dynamic cosmic color tints
-            const colorPalettes = [
-              { trail: '192, 132, 252', core: '255, 255, 255', glow: '#c084fc' }, // Violet / White
-              { trail: '56, 189, 248',  core: '255, 255, 255', glow: '#38bdf8' }, // Starlight Cyan
-              { trail: '244, 114, 182', core: '255, 255, 255', glow: '#f472b6' }, // Cosmic Rose
-              { trail: '251, 191, 36',  core: '255, 255, 255', glow: '#fbbf24' }  // Golden Stardust
+            const speed = (Math.random() * 14 + 18) * mood.movementSpeedMultiplier;
+            const length = Math.random() * 140 + 100;
+            const palettes = [
+              { trail: '192, 132, 252', glow: '#c084fc' },
+              { trail: '56, 189, 248', glow: '#38bdf8' },
+              { trail: '251, 191, 36', glow: '#fbbf24' },
+              { trail: '244, 114, 182', glow: '#f472b6' }
             ];
-            const palette = colorPalettes[Math.floor(Math.random() * colorPalettes.length)];
+            const palette = palettes[Math.floor(Math.random() * palettes.length)];
 
             engine.meteors.push({
               x: startX,
               y: startY,
-              dx: Math.cos(angle) * speed,
-              dy: Math.sin(angle) * speed,
               angle,
+              speed,
               length,
-              palette,
               life: 1.0,
-              decay: 0.90 // ~1.15s sweep across the sky
+              decay: Math.random() * 0.016 + 0.018,
+              palette
             });
           }
 
-          // Render active meteor sparks
-          if (engine.meteorSparks) {
-            for (let s = engine.meteorSparks.length - 1; s >= 0; s--) {
-              const spk = engine.meteorSparks[s];
-              spk.life -= dt * 2.2;
-              spk.x += spk.dx;
-              spk.y += spk.dy;
-              if (spk.life <= 0) {
-                engine.meteorSparks.splice(s, 1);
-                continue;
-              }
-              ctx.save();
-              ctx.beginPath();
-              ctx.arc(spk.x, spk.y, spk.r * spk.life, 0, Math.PI * 2);
-              ctx.fillStyle = `rgba(${spk.color}, ${spk.life * 0.9})`;
-              ctx.shadowBlur = 6;
-              ctx.shadowColor = '#ffffff';
-              ctx.fill();
-              ctx.restore();
-            }
-          }
-
-          // Draw active meteor
           for (let m = engine.meteors.length - 1; m >= 0; m--) {
             const met = engine.meteors[m];
-            met.x += met.dx;
-            met.y += met.dy;
-            met.life -= dt * met.decay;
+            met.x += Math.cos(met.angle) * met.speed;
+            met.y += Math.sin(met.angle) * met.speed;
+            met.life -= met.decay;
 
-            // Spawn trailing spark particles
-            if (engine.meteorSparks && Math.random() < 0.65) {
-              engine.meteorSparks.push({
-                x: met.x + (Math.random() - 0.5) * 6,
-                y: met.y + (Math.random() - 0.5) * 6,
-                dx: -Math.cos(met.angle) * (Math.random() * 2 + 1),
-                dy: -Math.sin(met.angle) * (Math.random() * 2 + 1),
+            if (Math.random() > 0.3 && engine.sparkles.length < 60) {
+              engine.sparkles.push({
+                x: met.x - Math.cos(met.angle) * (Math.random() * met.length * 0.6),
+                y: met.y - Math.sin(met.angle) * (Math.random() * met.length * 0.6),
+                dx: (Math.random() - 0.5) * 1.5,
+                dy: (Math.random() - 0.5) * 1.5,
+                alpha: met.life,
+                decay: 0.035,
                 r: Math.random() * 1.8 + 0.8,
-                color: met.palette.trail,
-                life: 1.0
+                color: `rgba(${met.palette.trail}, 0.8)`
               });
             }
 
@@ -1295,8 +1843,8 @@
             // Pass 1: Wide diffuse bloom trail
             const bloomGrad = ctx.createLinearGradient(tailX, tailY, met.x, met.y);
             bloomGrad.addColorStop(0, `rgba(${met.palette.trail}, 0)`);
-            bloomGrad.addColorStop(0.5, `rgba(${met.palette.trail}, ${met.life * 0.35})`);
-            bloomGrad.addColorStop(1, `rgba(${met.palette.trail}, ${met.life * 0.75})`);
+            bloomGrad.addColorStop(0.5, `rgba(${met.palette.trail}, ${met.life * 0.35 * mood.particleOpacityMultiplier})`);
+            bloomGrad.addColorStop(1, `rgba(${met.palette.trail}, ${met.life * 0.75 * mood.particleOpacityMultiplier})`);
             ctx.strokeStyle = bloomGrad;
             ctx.lineWidth = 7.5;
             ctx.beginPath();
@@ -1307,8 +1855,8 @@
             // Pass 2: Bright luminous beam
             const grad = ctx.createLinearGradient(tailX, tailY, met.x, met.y);
             grad.addColorStop(0, `rgba(${met.palette.trail}, 0)`);
-            grad.addColorStop(0.6, `rgba(${met.palette.trail}, ${met.life * 0.85})`);
-            grad.addColorStop(1, `rgba(255, 255, 255, ${met.life * 0.98})`);
+            grad.addColorStop(0.6, `rgba(${met.palette.trail}, ${met.life * 0.85 * mood.particleOpacityMultiplier})`);
+            grad.addColorStop(1, `rgba(255, 255, 255, ${met.life * 0.98 * mood.particleOpacityMultiplier})`);
             ctx.strokeStyle = grad;
             ctx.lineWidth = 3.2;
             ctx.beginPath();
@@ -1329,14 +1877,14 @@
 
             // Glowing meteor head with intense bloom
             ctx.fillStyle = '#ffffff';
-            ctx.shadowBlur = 22;
+            ctx.shadowBlur = 22 * mood.pulseIntensity;
             ctx.shadowColor = met.palette.glow;
             ctx.beginPath();
             ctx.arc(met.x, met.y, 3.4, 0, Math.PI * 2);
             ctx.fill();
 
             // Outer head corona
-            ctx.fillStyle = `rgba(${met.palette.trail}, ${met.life * 0.7})`;
+            ctx.fillStyle = `rgba(${met.palette.trail}, ${met.life * 0.7 * mood.particleOpacityMultiplier})`;
             ctx.beginPath();
             ctx.arc(met.x, met.y, 6.5, 0, Math.PI * 2);
             ctx.fill();
@@ -1366,20 +1914,21 @@
         },
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
+          ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0, 0.45 * mood.particleOpacityMultiplier)})`;
           ctx.lineWidth = 1.2;
           ctx.beginPath();
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.y += p.speed;
-            p.x -= 1.8; // gentle diagonal slant
+            p.y += p.speed * mood.particleSpeedMultiplier;
+            p.x -= 1.8 * mood.movementVariance;
             if (p.y > engine.height + 20) {
               p.y = -20;
               p.x = Math.random() * engine.width;
             }
             if (p.x < -20) p.x = engine.width + 20;
             ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x - 2.5, p.y + p.len);
+            ctx.lineTo(p.x - 2.5 * mood.movementVariance, p.y + p.len);
           }
           ctx.stroke();
         }
@@ -1387,6 +1936,7 @@
 
       // ============================================================
       // 8. AUTUMN LEAVES (Autumn Mode)
+      // Pure organic aerodynamic motion without pointer wind deflection
       // ============================================================
       this.effectRenderers.autumnLeaves = {
         init: (engine) => {
@@ -1409,11 +1959,14 @@
         },
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
+          const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
+
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx;
-            p.y += p.dy;
-            p.rot += p.rotSpeed;
+            p.x += (p.dx * mood.particleSpeedMultiplier) + Math.sin(time * 1.2 * mood.wanderFrequency + i) * 0.4 * mood.movementVariance;
+            p.y += p.dy * mood.particleSpeedMultiplier;
+            p.rot += p.rotSpeed * mood.movementVariance;
 
             if (p.y > engine.height + 20) {
               p.y = -20;
@@ -1424,10 +1977,20 @@
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.rotate(p.rot);
+            ctx.globalAlpha = mood.particleOpacityMultiplier;
             ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.ellipse(0, 0, p.r * 1.8, p.r * 0.8, 0, 0, Math.PI * 2);
             ctx.fill();
+
+            if (mood.ambientBloomA > 0.02) {
+              const sr = Math.round(mood.specularR);
+              const sg = Math.round(mood.specularG);
+              const sb = Math.round(mood.specularB);
+              ctx.strokeStyle = `rgba(${sr}, ${sg}, ${sb}, ${(mood.ambientBloomA * 0.75).toFixed(3)})`;
+              ctx.lineWidth = 0.6;
+              ctx.stroke();
+            }
             ctx.restore();
           }
         }
@@ -1456,19 +2019,20 @@
         },
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
           ctx.fillStyle = '#ffffff';
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.wobble += p.wobbleSpeed;
-            p.x += p.dx + Math.sin(p.wobble) * 0.5;
-            p.y += p.dy;
+            p.wobble += p.wobbleSpeed * mood.wanderFrequency;
+            p.x += (p.dx * mood.particleSpeedMultiplier) + Math.sin(p.wobble) * 0.5 * mood.movementVariance;
+            p.y += p.dy * mood.particleSpeedMultiplier;
             if (p.y > engine.height + 10) {
               p.y = -10;
               p.x = Math.random() * engine.width;
             }
             if (p.x < -10) p.x = engine.width + 10;
             if (p.x > engine.width + 10) p.x = -10;
-            ctx.globalAlpha = p.opacity;
+            ctx.globalAlpha = Math.max(0, p.opacity * mood.particleOpacityMultiplier);
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
             ctx.fill();
@@ -1499,20 +2063,47 @@
         },
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
-          ctx.fillStyle = 'rgba(244, 114, 182, 0.70)';
+          const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
+
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx;
-            p.y += p.dy;
-            p.rot += p.rotSpeed;
+            p.x += (p.dx * mood.particleSpeedMultiplier) + Math.sin(time * 1.4 * mood.wanderFrequency + i) * 0.4 * mood.movementVariance;
+            p.y += p.dy * mood.particleSpeedMultiplier;
+            p.rot += p.rotSpeed * mood.movementVariance;
+
+            // Interactive pointer wind deflection for sakura
+            if (engine.pointer.x !== -1000) {
+              const pdx = p.x - engine.pointer.x;
+              const pdy = p.y - engine.pointer.y;
+              const pdist = Math.hypot(pdx, pdy);
+              if (pdist < 130 && pdist > 0) {
+                const force = (130 - pdist) / 130;
+                p.x += (pdx / pdist) * force * 3.5 + engine.pointer.vx * 0.35;
+                p.y += (pdy / pdist) * force * 3.5 + engine.pointer.vy * 0.35;
+              }
+            }
+
             if (p.y > engine.height + 15) { p.y = -15; p.x = Math.random() * engine.width; }
             if (p.x > engine.width + 15) { p.x = -15; p.y = Math.random() * engine.height; }
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.rotate(p.rot);
+            ctx.globalAlpha = mood.particleOpacityMultiplier;
+            ctx.fillStyle = 'rgba(244, 114, 182, 0.70)';
             ctx.beginPath();
             ctx.ellipse(0, 0, p.r * 1.6, p.r * 0.75, 0, 0, Math.PI * 2);
             ctx.fill();
+
+            // Subtle contrasting mood glint/specular rim on petal edge
+            if (mood.ambientBloomA > 0.02) {
+              const sr = Math.round(mood.specularR);
+              const sg = Math.round(mood.specularG);
+              const sb = Math.round(mood.specularB);
+              ctx.strokeStyle = `rgba(${sr}, ${sg}, ${sb}, ${(mood.ambientBloomA * 0.85).toFixed(3)})`;
+              ctx.lineWidth = 0.75;
+              ctx.stroke();
+            }
             ctx.restore();
           }
         }
@@ -1547,34 +2138,35 @@
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           // 1. Antique Sepia Dust Motes
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            p.x += p.dx;
-            p.y += p.dy;
+            p.x += p.dx * mood.movementSpeedMultiplier;
+            p.y += p.dy * mood.movementSpeedMultiplier;
 
             if (p.x < -10) p.x = engine.width + 10;
             if (p.x > engine.width + 10) p.x = -10;
             if (p.y < -10) p.y = engine.height + 10;
             if (p.y > engine.height + 10) p.y = -10;
 
-            const currentOpacity = p.opacity * (0.7 + 0.3 * Math.sin(time * p.pulseSpeed + p.pulseOffset));
+            const currentOpacity = p.opacity * mood.particleOpacityMultiplier * (0.7 + 0.3 * Math.sin(time * p.pulseSpeed * mood.pulseIntensity + p.pulseOffset));
 
             ctx.save();
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(212, 175, 120, ${currentOpacity})`;
-            ctx.shadowBlur = 3;
-            ctx.shadowColor = `rgba(212, 175, 120, ${currentOpacity * 0.6})`;
+            ctx.fillStyle = `rgba(212, 175, 120, ${Math.max(0, currentOpacity)})`;
+            ctx.shadowBlur = 3 * mood.pulseIntensity;
+            ctx.shadowColor = `rgba(212, 175, 120, ${Math.max(0, currentOpacity * 0.6)})`;
             ctx.fill();
             ctx.restore();
           }
 
-          // 2. Rare Microscopic Film Scratch (flashes for 1 frame)
+          // 2. Rare Microscopic Film Scratch
           if (performance.now() > engine.nextScratchTime) {
             engine.scratchX = Math.random() * engine.width;
-            engine.nextScratchTime = performance.now() + 5000 + Math.random() * 7000;
+            engine.nextScratchTime = performance.now() + (5000 + Math.random() * 7000) / Math.max(0.3, mood.activityLevel);
             ctx.save();
             ctx.strokeStyle = 'rgba(212, 190, 168, 0.12)';
             ctx.lineWidth = 0.75;
@@ -1611,17 +2203,19 @@
         updateAndDraw: (engine, dt) => {
           const ctx = engine.ctx;
           const time = engine.lastTime * 0.001;
+          const mood = engine.moodManager ? engine.moodManager.getModifiers() : MOOD_PROFILES.neutral;
 
           for (let i = 0; i < engine.particles.length; i++) {
             const p = engine.particles[i];
-            const currentOpacity = p.opacity * (0.5 + 0.5 * Math.sin(time * p.twinkleSpeed + p.twinkleOffset));
+            const currentOpacity = p.opacity * mood.particleOpacityMultiplier * (0.5 + 0.5 * Math.sin(time * p.twinkleSpeed * mood.pulseIntensity + p.twinkleOffset));
+            p.x += Math.sin(time * 0.3 * mood.wanderFrequency + i) * 0.1 * mood.movementSpeedMultiplier;
 
             ctx.save();
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(196, 181, 253, ${currentOpacity})`;
-            ctx.shadowBlur = 4;
-            ctx.shadowColor = `rgba(167, 139, 250, ${currentOpacity * 0.5})`;
+            ctx.fillStyle = `rgba(196, 181, 253, ${Math.max(0, currentOpacity)})`;
+            ctx.shadowBlur = 4 * mood.pulseIntensity;
+            ctx.shadowColor = `rgba(167, 139, 250, ${Math.max(0, currentOpacity * 0.5)})`;
             ctx.fill();
             ctx.restore();
           }
@@ -1725,7 +2319,6 @@
     });
   }
 
-  // ——— Initialization ———
   function initAtmosphereSystem() {
     engine.init('atmosphereCanvas', 'atmosphereElements');
 
@@ -1741,15 +2334,23 @@
 
     // 3. Init UI Listeners
     initModeSelectorPopover();
+
+    // 4. Restore active decoupled Mood if previously chosen
+    const savedMood = localStorage.getItem('archive-user-mood');
+    if (savedMood && engine.moodManager) {
+      engine.moodManager.activateMood(savedMood, true);
+    }
   }
 
   // ——— Window Global Exports ———
   window.AtmosphereEngine = engine;
+  window.MoodManager = engine.moodManager;
   window.WEBSITE_MODES = WEBSITE_MODES;
   window.READING_THEMES = READING_THEMES;
   window.applyWebsiteMode = applyWebsiteMode;
   window.applyReadingTheme = applyReadingTheme;
   window.setAtmosphereEffect = setAtmosphereEffect;
+  window.triggerAtmosphereRipple = (x, y) => engine.triggerRipple(x, y);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAtmosphereSystem);

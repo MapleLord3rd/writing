@@ -1,0 +1,25 @@
+{
+  "name": "The Archive — A Personal Literary Collection",
+  "short_name": "The Archive",
+  "description": "A sanctuary of poems, stories, collaborative dialogues, and reflections by Neerav & Avigna.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#131110",
+  "theme_color": "#131110",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23131110'/><text x='50%25' y='55%25' font-size='96' font-family='serif' fill='%23E6C594' text-anchor='middle' dominant-baseline='middle'>✦</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23131110'/><text x='50%25' y='55%25' font-size='260' font-family='serif' fill='%23E6C594' text-anchor='middle' dominant-baseline='middle'>✦</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

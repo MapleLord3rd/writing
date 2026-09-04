@@ -210,10 +210,33 @@
     }
   }
 
+  const BACKUP_STORAGE_KEYS = [
+    CUSTOM_STORAGE_KEY,
+    STORAGE_KEY,
+    'archive-writings-backup',
+    'archive_custom_writings',
+    'archive_all_writings'
+  ];
+
   function getCustomWritings() {
     try {
-      const stored = localStorage.getItem(CUSTOM_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      const map = new Map();
+      for (const key of BACKUP_STORAGE_KEYS) {
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const list = JSON.parse(stored);
+            if (Array.isArray(list)) {
+              list.forEach(item => {
+                if (item && item.id && !map.has(item.id)) {
+                  map.set(item.id, item);
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      }
+      return Array.from(map.values());
     } catch (e) {
       return [];
     }
@@ -255,8 +278,16 @@
   }
 
   function saveCustomWritings(writings) {
-    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(writings));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(writings));
+    try {
+      const json = JSON.stringify(writings);
+      for (const key of BACKUP_STORAGE_KEYS) {
+        try {
+          localStorage.setItem(key, json);
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.warn('Local storage write notice:', e);
+    }
     invalidateWritingsCache();
   }
 
@@ -964,6 +995,13 @@
     currentPage = page;
     previousPage = (page === 'reading') ? cameFrom : page;
 
+    // Toggle constellation-mode class on body and programmatically hide footer
+    document.body.classList.toggle('constellation-mode', page === 'constellation');
+    const footer = $('.footer');
+    if (footer) {
+      footer.style.display = (page === 'constellation') ? 'none' : '';
+    }
+
     $$('.nav-link').forEach(l => {
       l.classList.toggle('active', l.dataset.nav === page);
     });
@@ -982,11 +1020,19 @@
 
     window.scrollTo({ top: 0, behavior: 'instant' });
 
+    if (page !== 'constellation') {
+      ConstellationEngine.stop();
+    }
+
     switch (page) {
       case 'home':
         $('#page-home').classList.add('active');
         renderFeatured();
         initQuoteOfDay();
+        break;
+      case 'constellation':
+        $('#page-constellation').classList.add('active');
+        ConstellationEngine.start();
         break;
       case 'archive':
         $('#page-archive').classList.add('active');
@@ -1029,8 +1075,17 @@
     });
   }
 
+  // ——— Search Highlight Helper ———
+  function highlightText(text, query) {
+    if (!query || !query.trim() || !text) return escapeHTML(text);
+    const escaped = escapeHTML(text);
+    const cleanQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${cleanQuery})`, 'gi');
+    return escaped.replace(regex, '<mark class="search-highlight">$1</mark>');
+  }
+
   // ——— Writing Cards ———
-  function createWritingCard(writing, delay = 0) {
+  function createWritingCard(writing, delay = 0, searchQuery = '') {
     const card = document.createElement('article');
     card.className = 'writing-card visible';
     card.style.transitionDelay = delay + 'ms';
@@ -1062,6 +1117,9 @@
       </div>
     `;
 
+    const titleHtml = highlightText(writing.title, searchQuery);
+    const excerptHtml = highlightText(writing.excerpt, searchQuery);
+
     card.innerHTML = `
       ${bookmarkBtnHtml}
       <div class="card-meta">
@@ -1072,8 +1130,8 @@
         <span class="card-dot" aria-hidden="true">·</span>
         ${authorBadge}
       </div>
-      <h3 class="card-title">${escapeHTML(writing.title)}</h3>
-      <p class="card-excerpt">${escapeHTML(writing.excerpt)}</p>
+      <h3 class="card-title">${titleHtml}</h3>
+      <p class="card-excerpt">${excerptHtml}</p>
       <div class="card-footer">
         <div class="card-tags">${tagsHtml}</div>
         <span class="card-reading-time">${escapeHTML(writing.readingTime || '2 min read')}</span>
@@ -1207,7 +1265,7 @@
     } else {
       archiveEmpty.hidden = true;
       filtered.forEach((w, i) => {
-        archiveGrid.appendChild(createWritingCard(w, i * 50));
+        archiveGrid.appendChild(createWritingCard(w, i * 50, currentSearch));
       });
     }
 
@@ -1319,6 +1377,56 @@
     }
   }
 
+  // ——— Stanza Duel & Dialogue Parser ———
+  function parseStanzaDuel(content, defaultAuthor = 'neerav') {
+    if (!content) return { hasDuelMarkers: false, duelItems: [] };
+    const rawBlocks = content.trim().split(/\n\n+/);
+    let hasDuelMarkers = false;
+    const duelItems = [];
+    let currentAuthor = defaultAuthor;
+
+    for (const block of rawBlocks) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+
+      // Check for [Neerav], [Avigna], [Both], [N], [A], [Co-Authored]
+      const bracketMatch = trimmed.match(/^\[(neerav|avigna|both|n|a|co-authored)\]\s*([\s\S]*)$/i);
+      // Check for Neerav: or Avigna:
+      const colonMatch = trimmed.match(/^(neerav|avigna|the archivist|the muse|both):\s*([\s\S]*)$/i);
+
+      if (bracketMatch) {
+        hasDuelMarkers = true;
+        const tag = bracketMatch[1].toLowerCase();
+        let author = 'neerav';
+        if (tag === 'avigna' || tag === 'a') author = 'avigna';
+        else if (tag === 'both' || tag === 'co-authored') author = 'both';
+        else author = 'neerav';
+
+        currentAuthor = author;
+        const text = bracketMatch[2].trim();
+        if (text) {
+          duelItems.push({ author, text });
+        }
+      } else if (colonMatch) {
+        hasDuelMarkers = true;
+        const tag = colonMatch[1].toLowerCase();
+        let author = 'neerav';
+        if (tag === 'both') author = 'both';
+        else author = isAvigna(tag) ? 'avigna' : 'neerav';
+
+        currentAuthor = author;
+        const text = colonMatch[2].trim();
+        if (text) {
+          duelItems.push({ author, text });
+        }
+      } else {
+        duelItems.push({ author: currentAuthor, text: trimmed });
+      }
+    }
+
+    return { hasDuelMarkers, duelItems };
+  }
+
   function renderReading(writingId) {
     currentReadingId = writingId;
     const allWritings = getWritings();
@@ -1359,11 +1467,66 @@
     const prevWork = currentIndex < sortedWritings.length - 1 ? sortedWritings[currentIndex + 1] : null;
     const nextWork = currentIndex > 0 ? sortedWritings[currentIndex - 1] : null;
 
-    // Format content
+    // Format content with Stanza Duel, Collaborative, Poem, or Prose
     let bodyHtml;
     let collabPassThePenHtml = '';
+    const duelParse = parseStanzaDuel(writing.content, writing.author);
+    const isStanzaDuel = duelParse.hasDuelMarkers || (isCollab && duelParse.duelItems.length > 0);
 
-    if (isCollab) {
+    if (isStanzaDuel) {
+      const stanzasRendered = duelParse.duelItems.map((item, idx) => {
+        const isAv = item.author === 'avigna';
+        const isBoth = item.author === 'both';
+        const authorDisplayName = isBoth ? 'Neerav & Avigna' : getAuthorDisplayName(item.author);
+        const emblem = isBoth ? '✦ ✒' : (isAv ? '✦' : 'N');
+        const modifierClass = isBoth ? 'stanza-card--both' : (isAv ? 'stanza-card--avigna' : 'stanza-card--neerav');
+        const formattedText = item.text.split('\n').map(line => escapeHTML(line)).join('<br>');
+
+        return `
+          <div class="stanza-duel-card ${modifierClass}" data-stanza-index="${idx}">
+            <div class="stanza-duel-header">
+              <div class="stanza-author-badge">
+                <span class="stanza-emblem">${emblem}</span>
+                <span class="stanza-author-name">${authorDisplayName}</span>
+              </div>
+              <span class="stanza-number">Stanza ${idx + 1}</span>
+            </div>
+            <div class="stanza-duel-text">${formattedText}</div>
+            <div class="stanza-connector-thread" aria-hidden="true"></div>
+          </div>
+        `;
+      }).join('');
+
+      bodyHtml = `
+        <div class="stanza-duel-container">
+          <div class="stanza-duel-legend">
+            <span class="duel-legend-item legend--neerav"><span class="legend-dot"></span> Neerav (The Archivist)</span>
+            <span class="duel-thread-indicator">✦ Call &amp; Response ✦</span>
+            <span class="duel-legend-item legend--avigna"><span class="legend-dot"></span> Avigna (The Muse)</span>
+          </div>
+          <div class="stanza-duel-flow">${stanzasRendered}</div>
+        </div>
+      `;
+
+      if (isCollab) {
+        const currentAuthorName = getAuthorDisplayName(getCurrentUser());
+        collabPassThePenHtml = `
+          <div class="pass-the-pen-box" id="passThePenBox">
+            <div class="pass-the-pen-header">
+              <span class="pass-the-pen-icon">✒</span>
+              <h3 class="pass-the-pen-title">Pass the Pen — Add Next Stanza / Turn</h3>
+            </div>
+            <p class="pass-the-pen-subtitle">You are writing as <strong>${escapeHTML(currentAuthorName)}</strong></p>
+            <textarea id="passThePenInput" class="comment-input" style="min-height: 85px;" placeholder="Write the next verse or turn..."></textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+              <button type="button" class="btn-primary" id="btnSubmitTurn" style="font-size: 0.85rem; padding: 8px 18px;">
+                <span>Append Turn</span> <span>&rarr;</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    } else if (isCollab) {
       const rawBlocks = (writing.content || '').trim().split(/\n\n+/);
       const turns = [];
 
@@ -2600,6 +2763,24 @@
 
     $('#btnPrevStep2')?.addEventListener('click', () => showStep(1));
 
+    // Stanza Duel Helper Buttons for Collaborative & Verse Creation
+    function insertStanzaTag(tag) {
+      if (!formContent) return;
+      const start = formContent.selectionStart || 0;
+      const end = formContent.selectionEnd || 0;
+      const val = formContent.value;
+      const prefix = (start > 0 && val[start - 1] !== '\n') ? '\n\n' : '';
+      const insert = prefix + tag + '\n';
+      formContent.value = val.substring(0, start) + insert + val.substring(end);
+      formContent.focus();
+      const newPos = start + insert.length;
+      formContent.setSelectionRange(newPos, newPos);
+    }
+
+    $('#btnInsertNeeravStanza')?.addEventListener('click', () => insertStanzaTag('[Neerav]'));
+    $('#btnInsertAvignaStanza')?.addEventListener('click', () => insertStanzaTag('[Avigna]'));
+    $('#btnInsertBothStanza')?.addEventListener('click', () => insertStanzaTag('[Both]'));
+
     $('#btnNextStep2')?.addEventListener('click', () => {
       if (!formContent.value.trim()) { formContent.reportValidity(); return; }
       showStep(3);
@@ -2783,21 +2964,136 @@
 
   // ——— Keyboard Navigation ———
   function initKeyboard() {
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if ($('#page-reading') && !$('#page-reading').hidden) {
-          navigateTo(previousPage || 'archive');
-        } else if (!adminModal.hidden) {
-          closeModal();
-        } else if (!$('#postcardModal')?.hidden) {
-          $('#postcardModal').hidden = true;
+    const handleEscapeKey = (e) => {
+      const isEscape = e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27 || e.code === 'Escape';
+      if (!isEscape) return;
+
+      // 1. Emotional Sanctuary Mood Modal (Replicate clicking #moodModalClose)
+      const moodModal = document.getElementById('moodModal');
+      if (moodModal && (!moodModal.hidden || moodModal.classList.contains('open') || window.getComputedStyle(moodModal).display !== 'none')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const moodCloseBtn = document.getElementById('moodModalClose');
+        if (moodCloseBtn) {
+          moodCloseBtn.click();
+        } else if (typeof MoodCompanionManager !== 'undefined' && MoodCompanionManager.closeMoodModal) {
+          MoodCompanionManager.closeMoodModal();
         } else {
-          navToggle.classList.remove('open');
-          navLinks.classList.remove('open');
-          navToggle.setAttribute('aria-expanded', 'false');
+          moodModal.hidden = true;
         }
+        return;
       }
-    });
+
+      // 2. Floating Mood Companion Card (Replicate clicking #btnMoodCardClose)
+      const moodCard = document.getElementById('moodCompanionCard');
+      if (moodCard && !moodCard.hidden && (moodCard.classList.contains('visible') || window.getComputedStyle(moodCard).opacity !== '0')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const cardCloseBtn = document.getElementById('btnMoodCardClose') || document.getElementById('moodCompanionClose');
+        if (cardCloseBtn) {
+          cardCloseBtn.click();
+        } else if (typeof MoodCompanionManager !== 'undefined' && MoodCompanionManager.dismissCompanionCard) {
+          MoodCompanionManager.dismissCompanionCard();
+        } else {
+          moodCard.hidden = true;
+        }
+        return;
+      }
+
+      // 3. Constellation Star Inspector Drawer (Replicate clicking #btnConstellationInspectorClose)
+      const inspector = document.getElementById('constellationInspector');
+      if (inspector && (!inspector.hidden || inspector.classList.contains('open') || window.getComputedStyle(inspector).display !== 'none')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const inspectorCloseBtn = document.getElementById('btnConstellationInspectorClose') || document.getElementById('constellationInspectorClose');
+        if (inspectorCloseBtn) {
+          inspectorCloseBtn.click();
+        } else {
+          inspector.classList.remove('open');
+          inspector.hidden = true;
+        }
+        return;
+      }
+
+      // 4. Distraction-Free Zen Fullscreen Mode (Replicate clicking #btnExitZen)
+      const zenOverlay = document.getElementById('zenOverlay');
+      if (zenOverlay && !zenOverlay.hidden && window.getComputedStyle(zenOverlay).display !== 'none') {
+        e.preventDefault();
+        e.stopPropagation();
+        const exitZenBtn = document.getElementById('btnExitZen');
+        if (exitZenBtn) {
+          exitZenBtn.click();
+        } else {
+          zenOverlay.hidden = true;
+        }
+        return;
+      }
+
+      // 5. Admin / Writing Modal (Replicate clicking #modalClose)
+      const adminModal = document.getElementById('adminModal');
+      if (adminModal && (!adminModal.hidden || window.getComputedStyle(adminModal).display !== 'none')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const adminCloseBtn = document.getElementById('modalClose');
+        if (adminCloseBtn) {
+          adminCloseBtn.click();
+        } else {
+          closeModal();
+        }
+        return;
+      }
+
+      // 6. Postcard Modal (Replicate clicking #postcardClose)
+      const postcardModal = document.getElementById('postcardModal');
+      if (postcardModal && (!postcardModal.hidden || window.getComputedStyle(postcardModal).display !== 'none')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const postcardCloseBtn = document.getElementById('postcardClose');
+        if (postcardCloseBtn) {
+          postcardCloseBtn.click();
+        } else {
+          postcardModal.hidden = true;
+        }
+        return;
+      }
+
+      // 7. Profile Modal (Replicate clicking #profileModalClose)
+      const profileModal = document.getElementById('profileModal');
+      if (profileModal && (!profileModal.hidden || window.getComputedStyle(profileModal).display !== 'none')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const profileCloseBtn = document.getElementById('profileModalClose');
+        if (profileCloseBtn) {
+          profileCloseBtn.click();
+        } else {
+          profileModal.hidden = true;
+        }
+        return;
+      }
+
+      // 8. Mobile Navigation Drawer
+      if (navToggle && navLinks && (navToggle.classList.contains('open') || navLinks.classList.contains('open'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        navToggle.classList.remove('open');
+        navLinks.classList.remove('open');
+        navToggle.setAttribute('aria-expanded', 'false');
+        return;
+      }
+
+      // 9. Reading View back navigation
+      const readingPage = document.getElementById('page-reading');
+      if (readingPage && !readingPage.hidden && window.getComputedStyle(readingPage).display !== 'none') {
+        e.preventDefault();
+        e.stopPropagation();
+        navigateTo(previousPage || 'archive');
+        return;
+      }
+    };
+
+    // Capture phase on both window and document to guarantee intercepting before child controls stop propagation
+    window.addEventListener('keydown', handleEscapeKey, { capture: true });
+    document.addEventListener('keydown', handleEscapeKey, { capture: true });
   }
 
   // ——— User-Set Password Lock (one per identity, saved in localStorage) ———
@@ -3027,6 +3323,1152 @@
     });
   }
 
+  // ============================================================
+  // CONSTELLATION / STAR MAP ENGINE (2D Force-Directed Graph)
+  // ============================================================
+  const ConstellationEngine = (() => {
+    let canvas, ctx;
+    let animId = null;
+    let isRunning = false;
+
+    // Graph data
+    let nodes = [];
+    let edges = [];
+    let hoveredNode = null;
+    let selectedNode = null;
+    let draggedNode = null;
+
+    // Camera / Transform & DPR Dimensions
+    let width = 0, height = 0;
+    let panX = 0, panY = 0;
+    let zoom = 1.0;
+    let dpr = 1;
+    let isPanning = false;
+    let startPanX = 0, startPanY = 0;
+
+    // Filters
+    let authorFilter = 'all';
+    let typeFilter = 'all';
+    let collectionFilter = 'all';
+    let searchFilter = '';
+
+    // Celestial background stars
+    let bgStars = [];
+
+    function init() {
+      canvas = $('#constellationCanvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+
+      // Bind HUD controls
+      $$('.constellation-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          $$('.constellation-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          authorFilter = btn.dataset.filter || 'all';
+          filterGraph();
+        });
+      });
+
+      $('#constellationAuthorFilter')?.addEventListener('change', (e) => {
+        authorFilter = e.target.value;
+        filterGraph();
+      });
+      $('#constellationTypeFilter')?.addEventListener('change', (e) => {
+        typeFilter = e.target.value;
+        filterGraph();
+      });
+      $('#constellationCollectionFilter')?.addEventListener('change', (e) => {
+        collectionFilter = e.target.value;
+        filterGraph();
+      });
+      $('#constellationSearchInput')?.addEventListener('input', (e) => {
+        searchFilter = (e.target.value || '').trim().toLowerCase();
+        filterGraph();
+      });
+
+      $('#btnConstellationZoomIn')?.addEventListener('click', () => {
+        zoom = Math.min(zoom * 1.25, 3.0);
+      });
+      $('#btnConstellationZoomOut')?.addEventListener('click', () => {
+        zoom = Math.max(zoom * 0.8, 0.35);
+      });
+      $('#btnConstellationReset')?.addEventListener('click', resetView);
+      $('#btnConstellationResetView')?.addEventListener('click', resetView);
+
+      // Star Inspector close
+      const closeInspector = () => {
+        const drawer = $('#constellationInspector');
+        if (drawer) {
+          drawer.classList.remove('open');
+          drawer.hidden = true;
+        }
+        selectedNode = null;
+      };
+      $('#btnConstellationInspectorClose')?.addEventListener('click', closeInspector);
+      $('#constellationInspectorClose')?.addEventListener('click', closeInspector);
+
+      // Canvas pointer interactions
+      canvas.addEventListener('mousedown', onPointerDown);
+      window.addEventListener('mousemove', onPointerMove);
+      window.addEventListener('mouseup', onPointerUp);
+
+      canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', onTouchEnd);
+
+      canvas.addEventListener('wheel', onWheel, { passive: false });
+      window.addEventListener('resize', onResize);
+    }
+
+    function onResize() {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 3);
+      width = rect.width || window.innerWidth;
+      height = rect.height || window.innerHeight;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      createBgStars();
+    }
+
+    function createBgStars() {
+      bgStars = [];
+      const count = Math.floor((width * height) / 4000);
+      for (let i = 0; i < count; i++) {
+        bgStars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 1.2 + 0.3,
+          alpha: Math.random() * 0.6 + 0.2,
+          twinkleSpeed: Math.random() * 0.02 + 0.005,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    function populateCollectionFilter() {
+      const colSelect = $('#constellationCollectionFilter');
+      if (!colSelect) return;
+      const collections = new Set();
+      getWritings().forEach(w => {
+        if (w.collection) collections.add(w.collection);
+      });
+
+      const currentVal = colSelect.value || 'all';
+      colSelect.innerHTML = '<option value="all">All Collections</option>';
+      collections.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        colSelect.appendChild(opt);
+      });
+      colSelect.value = currentVal;
+    }
+
+    function buildGraph() {
+      const writings = getWritings();
+      populateCollectionFilter();
+
+      // Node construction
+      const nodeMap = new Map();
+      nodes = writings.map((w, index) => {
+        const isAv = isAvigna(w.author);
+        const isCollab = w.type === 'collaborative' || (w.author && w.author.includes('&'));
+        const wordCount = countWords(w.content);
+        const baseRadius = Math.max(6, Math.min(18, 5 + Math.sqrt(wordCount) * 0.4));
+
+        // Initial organic constellation spiral distribution
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+        const distance = 80 + Math.sqrt(index) * 65;
+        const theta = index * goldenAngle;
+        const x = Math.cos(theta) * distance;
+        const y = Math.sin(theta) * distance;
+
+        const node = {
+          id: w.id,
+          writing: w,
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          radius: baseRadius,
+          targetRadius: baseRadius,
+          author: isCollab ? 'both' : (isAv ? 'avigna' : 'neerav'),
+          color: isCollab ? '#fbbf24' : (isAv ? '#c084fc' : '#e67373'),
+          glowColor: isCollab ? 'rgba(251, 191, 36, 0.45)' : (isAv ? 'rgba(192, 132, 252, 0.45)' : 'rgba(230, 115, 115, 0.45)'),
+          visible: true,
+          twinkleOffset: Math.random() * 100
+        };
+        nodeMap.set(w.id, node);
+        return node;
+      });
+
+      // Edge construction (shared tags, collection, and inResponseTo dialogues)
+      edges = [];
+      const edgeKeySet = new Set();
+
+      for (let i = 0; i < writings.length; i++) {
+        for (let j = i + 1; j < writings.length; j++) {
+          const w1 = writings[i];
+          const w2 = writings[j];
+          const node1 = nodeMap.get(w1.id);
+          const node2 = nodeMap.get(w2.id);
+          if (!node1 || !node2) continue;
+
+          // Check for inResponseTo
+          const isDialogue = (w1.inResponseTo === w2.id) || (w2.inResponseTo === w1.id);
+
+          // Check for shared collection
+          const sharedCollection = (w1.collection && w2.collection && w1.collection === w2.collection);
+
+          // Check for shared tags
+          const tags1 = new Set(w1.tags || []);
+          const sharedTagsCount = (w2.tags || []).filter(t => tags1.has(t)).length;
+
+          let edgeType = null;
+          let strength = 0;
+
+          if (isDialogue) {
+            edgeType = 'dialogue'; // Golden braided thread
+            strength = 0.08;
+          } else if (sharedCollection) {
+            edgeType = 'collection'; // Nebula bond
+            strength = 0.05;
+          } else if (sharedTagsCount >= 2) {
+            edgeType = 'tag'; // Stardust line
+            strength = 0.03 * sharedTagsCount;
+          }
+
+          if (edgeType) {
+            const edgeKey = [w1.id, w2.id].sort().join('---');
+            if (!edgeKeySet.has(edgeKey)) {
+              edgeKeySet.add(edgeKey);
+              edges.push({
+                source: node1,
+                target: node2,
+                type: edgeType,
+                strength,
+                sharedTagsCount
+              });
+            }
+          }
+        }
+      }
+
+      filterGraph();
+    }
+
+    function filterGraph() {
+      let visibleCount = 0;
+      nodes.forEach(node => {
+        const w = node.writing;
+        let match = true;
+
+        if (authorFilter !== 'all') {
+          if (authorFilter === 'neerav' && isAvigna(w.author)) match = false;
+          if (authorFilter === 'avigna' && !isAvigna(w.author)) match = false;
+          if (authorFilter === 'collaborative' && w.type !== 'collaborative' && !w.author?.includes('&')) match = false;
+        }
+
+        if (match && typeFilter !== 'all' && w.type !== typeFilter) {
+          match = false;
+        }
+
+        if (match && collectionFilter !== 'all' && w.collection !== collectionFilter) {
+          match = false;
+        }
+
+        if (match && searchFilter) {
+          const inTitle = (w.title || '').toLowerCase().includes(searchFilter);
+          const inExcerpt = (w.excerpt || '').toLowerCase().includes(searchFilter);
+          const inTags = (w.tags || []).some(t => t.toLowerCase().includes(searchFilter));
+          if (!inTitle && !inExcerpt && !inTags) match = false;
+        }
+
+        node.visible = match;
+        if (match) visibleCount++;
+      });
+
+      const countBadge = $('#constellationCountBadge');
+      if (countBadge) countBadge.textContent = `${visibleCount} celestial works`;
+    }
+
+    function resetView() {
+      panX = 0;
+      panY = 0;
+      zoom = 1.0;
+    }
+
+    function screenToWorld(sx, sy) {
+      const cx = width / 2;
+      const cy = height / 2;
+      return {
+        x: (sx - cx - panX) / zoom,
+        y: (sy - cy - panY) / zoom
+      };
+    }
+
+    function worldToScreen(wx, wy) {
+      const cx = width / 2;
+      const cy = height / 2;
+      return {
+        x: wx * zoom + cx + panX,
+        y: wy * zoom + cy + panY
+      };
+    }
+
+    function findNodeAt(sx, sy) {
+      const worldPos = screenToWorld(sx, sy);
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const node = nodes[i];
+        if (!node.visible) continue;
+        const dx = worldPos.x - node.x;
+        const dy = worldPos.y - node.y;
+        // Generous screen-space touch and click radius (minimum 16px on screen)
+        const screenRadius = Math.max(16, (node.radius + 6) * zoom);
+        const hitRadiusInWorld = screenRadius / zoom;
+        if (dx * dx + dy * dy <= hitRadiusInWorld * hitRadiusInWorld) {
+          return node;
+        }
+      }
+      return null;
+    }
+
+    function onPointerDown(e) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      const hit = findNodeAt(sx, sy);
+      if (hit) {
+        draggedNode = hit;
+        selectedNode = hit;
+      } else {
+        isPanning = true;
+        startPanX = sx - panX;
+        startPanY = sy - panY;
+      }
+    }
+
+    function onPointerMove(e) {
+      if (!isRunning || !canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      if (isPanning) {
+        panX = sx - startPanX;
+        panY = sy - startPanY;
+        return;
+      }
+
+      if (draggedNode) {
+        const worldPos = screenToWorld(sx, sy);
+        draggedNode.x = worldPos.x;
+        draggedNode.y = worldPos.y;
+        draggedNode.vx = 0;
+        draggedNode.vy = 0;
+        return;
+      }
+
+      // Check hover
+      const hit = findNodeAt(sx, sy);
+      if (hit !== hoveredNode) {
+        hoveredNode = hit;
+        canvas.style.cursor = hit ? 'pointer' : 'grab';
+        updateTooltip(hit, sx, sy);
+      } else if (hoveredNode) {
+        updateTooltip(hoveredNode, sx, sy);
+      }
+    }
+
+    function onPointerUp(e) {
+      if (isPanning) {
+        isPanning = false;
+        return;
+      }
+
+      if (draggedNode) {
+        const hit = draggedNode;
+        draggedNode = null;
+        if (hit) {
+          showStarInspector(hit);
+        }
+      }
+    }
+
+    function onTouchStart(e) {
+      if (e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.touches[0].clientX - rect.left;
+        const sy = e.touches[0].clientY - rect.top;
+        const hit = findNodeAt(sx, sy);
+        if (hit) {
+          draggedNode = hit;
+          selectedNode = hit;
+        } else {
+          isPanning = true;
+          startPanX = sx - panX;
+          startPanY = sy - panY;
+        }
+      }
+    }
+
+    function onTouchMove(e) {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.touches[0].clientX - rect.left;
+        const sy = e.touches[0].clientY - rect.top;
+
+        if (isPanning) {
+          panX = sx - startPanX;
+          panY = sy - startPanY;
+        } else if (draggedNode) {
+          const worldPos = screenToWorld(sx, sy);
+          draggedNode.x = worldPos.x;
+          draggedNode.y = worldPos.y;
+        }
+      }
+    }
+
+    function onTouchEnd(e) {
+      if (isPanning) isPanning = false;
+      if (draggedNode) {
+        showStarInspector(draggedNode);
+        draggedNode = null;
+      }
+    }
+
+    function onWheel(e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const worldBefore = screenToWorld(mouseX, mouseY);
+      const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+      const newZoom = Math.max(0.35, Math.min(3.0, zoom * zoomFactor));
+
+      zoom = newZoom;
+      const worldAfter = screenToWorld(mouseX, mouseY);
+
+      panX += (worldAfter.x - worldBefore.x) * zoom;
+      panY += (worldAfter.y - worldBefore.y) * zoom;
+    }
+
+    function updateTooltip(node, sx, sy) {
+      const tooltip = $('#constellationTooltip');
+      if (!tooltip) return;
+      if (!node) {
+        tooltip.hidden = true;
+        return;
+      }
+
+      tooltip.hidden = false;
+      tooltip.style.left = `${sx + 15}px`;
+      tooltip.style.top = `${sy - 15}px`;
+
+      const w = node.writing;
+      const authorName = getAuthorDisplayName(w.author);
+      const authorClass = isAvigna(w.author) ? 'tooltip-author--avigna' : 'tooltip-author--neerav';
+      tooltip.innerHTML = `
+        <div class="constellation-tooltip-header">
+          <span class="constellation-tooltip-type">${escapeHTML(w.type || 'writing')}</span>
+          <span class="constellation-tooltip-author ${authorClass}">${escapeHTML(authorName)}</span>
+        </div>
+        <div class="constellation-tooltip-title">&ldquo;${escapeHTML(w.title)}&rdquo;</div>
+        <div class="constellation-tooltip-meta">✦ ${escapeHTML(w.readingTime || '2 min read')} &bull; ${escapeHTML(w.date || '')}</div>
+        <div class="constellation-tooltip-hint">Click star to inspect &amp; read &rarr;</div>
+      `;
+    }
+
+    function showStarInspector(node) {
+      const drawer = $('#constellationInspector');
+      if (!drawer || !node) return;
+      const w = node.writing;
+      selectedNode = node;
+
+      const isAv = isAvigna(w.author);
+      const isCollab = w.type === 'collaborative' || (w.author && w.author.includes('&'));
+      const authorName = isCollab ? 'Neerav & Avigna' : getAuthorDisplayName(w.author);
+
+      // Badge / Type
+      const typeEl = $('#constellationInspectorType') || $('#constellationStarBadge');
+      if (typeEl) typeEl.textContent = `✦ ${(w.type || 'Piece').toUpperCase()}`;
+
+      // Title
+      const titleEl = $('#constellationInspectorTitle') || $('#constellationStarTitle');
+      if (titleEl) titleEl.textContent = w.title;
+
+      // Author & Meta
+      const authorEl = $('#constellationInspectorAuthor');
+      if (authorEl) authorEl.textContent = `by ${authorName}`;
+      const metaEl = $('#constellationStarMeta');
+      if (metaEl) metaEl.textContent = `${authorName} • ${w.readingTime || '2 min read'} • ${w.date || ''}`;
+
+      const dateEl = $('#constellationInspectorDate');
+      if (dateEl) dateEl.textContent = w.date || '';
+      const timeEl = $('#constellationInspectorTime');
+      if (timeEl) timeEl.textContent = w.readingTime || '2 min read';
+
+      // Excerpt
+      const excerptEl = $('#constellationInspectorExcerpt') || $('#constellationStarExcerpt');
+      if (excerptEl) excerptEl.textContent = w.excerpt ? `"${w.excerpt}"` : '';
+
+      // Tags / Connections
+      const tagsContainer = $('#constellationInspectorTags') || $('#constellationStarConnections');
+      if (tagsContainer) {
+        let conHtml = (w.tags || []).map(t => `<span class="tag">#${escapeHTML(t)}</span>`).join('');
+        if (w.inResponseTo) {
+          const respWriting = getWritings().find(rw => rw.id === w.inResponseTo);
+          if (respWriting) {
+            conHtml += `<div class="inspector-dialogue-link">↳ In dialogue with: <em>"${escapeHTML(respWriting.title)}"</em></div>`;
+          }
+        }
+        tagsContainer.innerHTML = conHtml;
+      }
+
+      // Read Button
+      const readBtn = $('#btnConstellationInspectorRead') || $('#btnConstellationReadStar');
+      if (readBtn) {
+        readBtn.onclick = () => {
+          drawer.classList.remove('open');
+          drawer.hidden = true;
+          navigateTo('reading', w.id);
+        };
+      }
+
+      drawer.hidden = false;
+      drawer.classList.add('open');
+    }
+
+    // Physics Simulation step
+    function stepPhysics() {
+      const damping = 0.88;
+      const repulsion = 1200;
+      const springLength = 110;
+
+      // Node-Node Repulsion
+      for (let i = 0; i < nodes.length; i++) {
+        const n1 = nodes[i];
+        if (!n1.visible) continue;
+        for (let j = i + 1; j < nodes.length; j++) {
+          const n2 = nodes[j];
+          if (!n2.visible) continue;
+
+          let dx = n2.x - n1.x;
+          let dy = n2.y - n1.y;
+          let distSq = dx * dx + dy * dy;
+          if (distSq === 0) {
+            dx = (Math.random() - 0.5) * 2;
+            dy = (Math.random() - 0.5) * 2;
+            distSq = 4;
+          }
+          const dist = Math.sqrt(distSq);
+          if (dist < 350) {
+            const force = repulsion / (distSq + 50);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            n1.vx -= fx;
+            n1.vy -= fy;
+            n2.vx += fx;
+            n2.vy += fy;
+          }
+        }
+
+        // Center gravity force
+        const centerDist = Math.sqrt(n1.x * n1.x + n1.y * n1.y);
+        const centerPull = 0.0008 * centerDist;
+        n1.vx -= (n1.x / (centerDist + 1)) * centerPull;
+        n1.vy -= (n1.y / (centerDist + 1)) * centerPull;
+      }
+
+      // Edge Springs
+      for (const edge of edges) {
+        if (!edge.source.visible || !edge.target.visible) continue;
+        const dx = edge.target.x - edge.source.x;
+        const dy = edge.target.y - edge.source.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const targetLen = edge.type === 'dialogue' ? springLength * 0.7 : springLength;
+        const displacement = dist - targetLen;
+        const force = displacement * edge.strength * 0.4;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+
+        edge.source.vx += fx;
+        edge.source.vy += fy;
+        edge.target.vx -= fx;
+        edge.target.vy -= fy;
+      }
+
+      // Integrate Velocity
+      for (const node of nodes) {
+        if (!node.visible || node === draggedNode) continue;
+        node.vx *= damping;
+        node.vy *= damping;
+        node.x += node.vx;
+        node.y += node.vy;
+      }
+    }
+
+    // Render loop
+    function render(timestamp) {
+      if (!isRunning) return;
+      animId = requestAnimationFrame(render);
+
+      stepPhysics();
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw background celestial stars
+      const now = timestamp * 0.001;
+      for (const star of bgStars) {
+        const tw = 0.5 + 0.5 * Math.sin(now * star.twinkleSpeed * 50 + star.phase);
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(230, 220, 200, ${star.alpha * tw})`;
+        ctx.fill();
+      }
+
+      ctx.save();
+      const cx = width / 2;
+      const cy = height / 2;
+      ctx.translate(cx + panX, cy + panY);
+      ctx.scale(zoom, zoom);
+
+      // Draw Edges / Constellation Lines
+      for (const edge of edges) {
+        if (!edge.source.visible || !edge.target.visible) continue;
+        const isHoveredEdge = (hoveredNode && (hoveredNode === edge.source || hoveredNode === edge.target));
+
+        ctx.beginPath();
+        ctx.moveTo(edge.source.x, edge.source.y);
+        ctx.lineTo(edge.target.x, edge.target.y);
+
+        if (edge.type === 'dialogue') {
+          // Golden braided dialogue thread
+          ctx.strokeStyle = isHoveredEdge ? 'rgba(251, 191, 36, 0.85)' : 'rgba(230, 197, 148, 0.45)';
+          ctx.lineWidth = (isHoveredEdge ? 2.5 : 1.5) / Math.max(0.7, zoom);
+          ctx.setLineDash([4 / zoom, 3 / zoom]);
+        } else if (edge.type === 'collection') {
+          ctx.strokeStyle = isHoveredEdge ? 'rgba(192, 132, 252, 0.75)' : 'rgba(192, 132, 252, 0.25)';
+          ctx.lineWidth = (isHoveredEdge ? 2.0 : 1.0) / Math.max(0.7, zoom);
+          ctx.setLineDash([]);
+        } else {
+          ctx.strokeStyle = isHoveredEdge ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = (isHoveredEdge ? 1.5 : 0.8) / Math.max(0.7, zoom);
+          ctx.setLineDash([]);
+        }
+
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Draw Nodes / Celestial Bodies
+      for (const node of nodes) {
+        if (!node.visible) continue;
+        const isHovered = (hoveredNode === node);
+        const isSelected = (selectedNode === node);
+
+        const pulse = 1.0 + 0.08 * Math.sin(now * 3 + node.twinkleOffset);
+        const r = (isHovered || isSelected ? node.radius * 1.35 : node.radius) * pulse;
+
+        // Outer glow
+        const glowRad = r * (isHovered || isSelected ? 3.5 : 2.2);
+        const grad = ctx.createRadialGradient(node.x, node.y, r * 0.2, node.x, node.y, glowRad);
+        grad.addColorStop(0, node.glowColor);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, glowRad, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Star core
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+
+        // White hot center
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // Diffraction spikes for featured or hovered stars
+        if (node.writing.featured || isHovered || isSelected) {
+          const spikeLen = r * 2.5;
+          ctx.strokeStyle = node.glowColor;
+          ctx.lineWidth = Math.max(1, 1.2 / zoom);
+          ctx.beginPath();
+          ctx.moveTo(node.x - spikeLen, node.y);
+          ctx.lineTo(node.x + spikeLen, node.y);
+          ctx.moveTo(node.x, node.y - spikeLen);
+          ctx.lineTo(node.x, node.y + spikeLen);
+          ctx.stroke();
+        }
+
+        // Star Title Label: High-DPI screen-space calculation for crystal-clear text at any distance
+        const showLabel = isHovered || isSelected || node.writing.featured || node.writing.inResponseTo || zoom >= 0.7;
+        if (showLabel) {
+          const isAv = isAvigna(node.writing.author);
+          const fontSizeScreen = isHovered || isSelected ? 12 : 10.5;
+          // Invert zoom so label maintains a legible, crisp screen size even from afar
+          const fontInWorld = Math.max(8, Math.round(fontSizeScreen / zoom));
+
+          ctx.font = `600 ${fontInWorld}px "Cinzel", "Cinzel Decorative", Georgia, serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+
+          const labelY = node.y + r + (8 / zoom);
+          const title = node.writing.title || 'Untitled';
+          const labelText = (title.length > 28 && !isHovered && !isSelected)
+            ? title.slice(0, 26) + '…'
+            : title;
+
+          // Dark text halo for sharp contrast against glowing star nebulae
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+          ctx.strokeStyle = 'rgba(10, 8, 14, 0.95)';
+          ctx.lineWidth = Math.max(2.5, 3.5 / zoom);
+          ctx.strokeText(labelText, node.x, labelY);
+
+          ctx.fillStyle = isHovered || isSelected
+            ? '#ffffff'
+            : (isAv ? '#e9d5ff' : '#fed7aa');
+          ctx.fillText(labelText, node.x, labelY);
+        }
+      }
+
+      ctx.restore(); // restores world transform
+      ctx.restore(); // restores dpr transform
+    }
+
+    function start() {
+      if (isRunning) return;
+      isRunning = true;
+      onResize();
+      buildGraph();
+      animId = requestAnimationFrame(render);
+    }
+
+    function stop() {
+      isRunning = false;
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    }
+
+    return {
+      init,
+      start,
+      stop,
+      buildGraph
+    };
+  })();
+
+  // ============================================================
+  // MOOD COMPANION & ADAPTIVE ORACLE SYSTEM
+  // ============================================================
+  const MoodCompanionManager = (() => {
+    const MOOD_DATA = {
+      sad: {
+        title: 'Melancholic & Reflective',
+        subtitle: 'Seeking warmth, solace, and gentle quietude',
+        cardTag: '✦ Sanctuary of Solace ✦',
+        quotes: [
+          {
+            quote: 'Even the darkest midnight is only a quiet corridor leading directly to the dawn.',
+            author: 'Neerav (The Archivist)'
+          },
+          {
+            quote: 'You do not have to carry the whole sky at once. Breathe, let the starlight hold you.',
+            author: 'Avigna (The Muse)'
+          },
+          {
+            quote: 'In every crack of sorrow, a golden thread of verse weaves itself back into harmony.',
+            author: 'Neerav & Avigna'
+          }
+        ],
+        message: 'A gentle, slow ambient presence now rests across the Archive. Take all the quiet time you need.',
+        recommendedTag: 'hope',
+        recommendedType: 'poem'
+      },
+      anxious: {
+        title: 'Anxious & Restless',
+        subtitle: 'Grounding your thoughts in serene tranquility',
+        cardTag: '✦ Grounding & Stillness ✦',
+        quotes: [
+          {
+            quote: 'The forest leaves do not rush the wind; they let each whisper arrive in its own due time.',
+            author: 'Neerav (The Archivist)'
+          },
+          {
+            quote: 'Close your eyes. Hear the pine boughs swaying. There is nothing you need to solve this second.',
+            author: 'Avigna (The Muse)'
+          }
+        ],
+        message: 'A subtle, restrained cadence is with you. Breathe gently and take things one breath at a time.',
+        recommendedTag: 'nature',
+        recommendedType: 'poem'
+      },
+      nostalgic: {
+        title: 'Nostalgic & Longing',
+        subtitle: 'Walking through golden memories and timeless echoes',
+        cardTag: '✦ Timeless Echoes ✦',
+        quotes: [
+          {
+            quote: 'Memory is the only garden that blooms in reverse, where yesterday is always perfumed with youth.',
+            author: 'Avigna (The Muse)'
+          },
+          {
+            quote: 'We write because moments slip through fingers like dry sand, but ink hardens into stone.',
+            author: 'Neerav (The Archivist)'
+          }
+        ],
+        message: 'A soft, distant golden dust drifts through the margins, holding warm echoes of memories.',
+        recommendedTag: 'memory',
+        recommendedType: 'story'
+      },
+      joyful: {
+        title: 'Joyful & Inspired',
+        subtitle: 'Celebrating spark, enchantment, and creative fire',
+        cardTag: '✦ Uplifting Spark ✦',
+        quotes: [
+          {
+            quote: 'When two imaginations collide, galaxies are born in the quiet margins of a parchment page.',
+            author: 'Neerav & Avigna'
+          },
+          {
+            quote: 'Let joy run through your veins like liquid stardust. Write the impossible today.',
+            author: 'Avigna (The Muse)'
+          }
+        ],
+        message: 'A light, uplifting sparkle drifts upward to celebrate your inspired creative energy!',
+        recommendedTag: 'magic',
+        recommendedType: 'collaborative'
+      },
+      weary: {
+        title: 'Tired & Weary',
+        subtitle: 'Soft nocturnes and restful quiet',
+        cardTag: '✦ Restful Sanctuary ✦',
+        quotes: [
+          {
+            quote: 'Lay down your quill. The stars have taken over the shift of watching the universe.',
+            author: 'Neerav (The Archivist)'
+          },
+          {
+            quote: 'Sleep softly, wanderer. Tomorrow holds unwritten poems waiting for your eyes.',
+            author: 'Avigna (The Muse)'
+          }
+        ],
+        message: 'Activity has settled into a restful, sparse quiet. Rest your eyes and wander at your own unhurried pace.',
+        recommendedTag: 'solitude',
+        recommendedType: 'poem'
+      },
+      peaceful: {
+        title: 'Serene & Peaceful',
+        subtitle: 'Tranquil meditation and quiet clarity',
+        cardTag: '✦ Temple of Tranquility ✦',
+        quotes: [
+          {
+            quote: 'A single blossom does not hurry the spring; it opens when the sun is kind.',
+            author: 'Avigna (The Muse)'
+          },
+          {
+            quote: 'In the quiet between two breaths, the heart finds its most honest poem.',
+            author: 'Neerav (The Archivist)'
+          }
+        ],
+        message: 'A calm, balanced atmosphere with gentle rhythm and open breathing room surrounds your reading.',
+        recommendedTag: 'nature',
+        recommendedType: 'poem'
+      },
+      serene: {
+        title: 'Serene & Contemplative',
+        subtitle: 'Quiet deep focus and meditative presence',
+        cardTag: '✦ Ocean of Stillness ✦',
+        quotes: [
+          {
+            quote: 'In the deep silence of the ocean, every wave returns home to the shore.',
+            author: 'Avigna (The Muse)'
+          },
+          {
+            quote: 'Still waters reflect the constellations with unbroken clarity.',
+            author: 'Neerav (The Archivist)'
+          }
+        ],
+        message: 'A calm, balanced atmosphere with gentle rhythm and open breathing room surrounds your reading.',
+        recommendedTag: 'reflection',
+        recommendedType: 'essay'
+      },
+      neutral: {
+        title: 'Natural & Balanced Sanctuary',
+        subtitle: 'The Archive in its purest, unaltered state',
+        cardTag: '✦ Pure Natural Sanctuary ✦',
+        quotes: [
+          {
+            quote: 'Between the written word and the quiet mind lies a timeless space of clarity.',
+            author: 'Neerav & Avigna'
+          },
+          {
+            quote: 'The archive breathes as you breathe — in natural stillness, unburdened and clear.',
+            author: 'Neerav (The Archivist)'
+          },
+          {
+            quote: 'Every story awaits you just as it was penned, unhurried, honest, and true.',
+            author: 'Avigna (The Muse)'
+          }
+        ],
+        message: 'Atmospheric tint and particle dynamics have returned to their natural, unaltered balance.',
+        recommendedTag: 'friendship',
+        recommendedType: 'poem'
+      }
+    };
+
+    let activeMood = null;
+    let autoDismissTimer = null;
+
+    function init() {
+      // Mood Trigger Buttons
+      $('#btnNavMood')?.addEventListener('click', openMoodModal);
+      $('#btnHeroMoodCompanion')?.addEventListener('click', openMoodModal);
+
+      // Mood Modal Close
+      $('#moodModalClose')?.addEventListener('click', closeMoodModal);
+      $('#moodModalOverlay')?.addEventListener('click', closeMoodModal);
+
+      // Emotion Card Click
+      $$('.mood-option-card, .mood-card-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const moodKey = btn.dataset.mood;
+          if (moodKey) {
+            selectMood(moodKey);
+            closeMoodModal();
+          }
+        });
+      });
+
+      // Companion Card Close & Change
+      $('#moodCompanionClose')?.addEventListener('click', dismissCompanionCard);
+      $('#btnMoodCardClose')?.addEventListener('click', dismissCompanionCard);
+      $('#btnMoodChange')?.addEventListener('click', () => {
+        openMoodModal();
+      });
+
+      // Auto-dismiss pause on hover/touch
+      const card = $('#moodCompanionCard');
+      if (card) {
+        card.addEventListener('mouseenter', () => {
+          if (autoDismissTimer) {
+            clearTimeout(autoDismissTimer);
+            autoDismissTimer = null;
+          }
+        });
+        card.addEventListener('mouseleave', () => {
+          if (card.classList.contains('visible')) {
+            if (autoDismissTimer) clearTimeout(autoDismissTimer);
+            autoDismissTimer = setTimeout(dismissCompanionCard, 4000);
+          }
+        });
+        card.addEventListener('touchstart', () => {
+          if (autoDismissTimer) {
+            clearTimeout(autoDismissTimer);
+            autoDismissTimer = null;
+          }
+        }, { passive: true });
+      }
+
+      // Escape key listener for mood modal
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+          const modal = $('#moodModal');
+          if (modal && (!modal.hidden || modal.classList.contains('open'))) {
+            closeMoodModal();
+          }
+        }
+      });
+
+      // Restore saved mood if present
+      const savedMood = localStorage.getItem('archive-user-mood');
+      if (savedMood && MOOD_DATA[savedMood]) {
+        activeMood = savedMood;
+        const navBtn = $('#btnNavMood');
+        if (navBtn) {
+          if (savedMood === 'neutral') {
+            navBtn.classList.remove('has-active-mood');
+          } else {
+            navBtn.classList.add('has-active-mood');
+          }
+        }
+      }
+    }
+
+    function openMoodModal() {
+      const modal = $('#moodModal');
+      if (modal) {
+        modal.hidden = false;
+        modal.classList.add('open');
+      }
+    }
+
+    function closeMoodModal() {
+      const modal = $('#moodModal');
+      if (modal) {
+        modal.hidden = true;
+        modal.classList.remove('open');
+      }
+    }
+
+    function selectMood(moodKey) {
+      const data = MOOD_DATA[moodKey];
+      if (!data) return;
+
+      activeMood = moodKey;
+      localStorage.setItem('archive-user-mood', moodKey);
+
+      // 1. Activate substantial mood atmospheric transformation (without switching Theme Mode or touching Web Audio)
+      if (window.AtmosphereEngine && typeof window.AtmosphereEngine.activateMood === 'function') {
+        window.AtmosphereEngine.activateMood(moodKey);
+      } else if (window.MoodManager && typeof window.MoodManager.activateMood === 'function') {
+        window.MoodManager.activateMood(moodKey);
+      }
+
+      // 2. Return to website immediately
+      closeMoodModal();
+
+      // 3. Pick random tailored quote
+      const quoteObj = data.quotes[Math.floor(Math.random() * data.quotes.length)];
+
+      // 4. Find recommended reading
+      const writings = getWritings();
+      let recWriting = writings.find(w => (w.tags || []).includes(data.recommendedTag));
+      if (!recWriting) {
+        recWriting = writings.find(w => w.type === data.recommendedType) || writings[0];
+      }
+
+      // 5. Render and slide in Floating Companion Card with 10s auto-dismiss
+      showCompanionCard(data, quoteObj, recWriting);
+
+      // 6. Highlight nav button (only for non-neutral moods)
+      const navBtn = $('#btnNavMood');
+      if (navBtn) {
+        if (moodKey === 'neutral') {
+          navBtn.classList.remove('has-active-mood');
+        } else {
+          navBtn.classList.add('has-active-mood');
+        }
+      }
+    }
+
+    function showCompanionCard(moodData, quoteObj, recWriting) {
+      const card = $('#moodCompanionCard');
+      if (!card) return;
+
+      if (autoDismissTimer) {
+        clearTimeout(autoDismissTimer);
+        autoDismissTimer = null;
+      }
+
+      // Icon & Badge / State
+      const iconMap = {
+        sad: '🌧️',
+        anxious: '🌊',
+        nostalgic: '🍂',
+        joyful: '✨',
+        weary: '🌙',
+        peaceful: '🌸',
+        serene: '🌸',
+        neutral: '⚖️'
+      };
+      card.dataset.mood = activeMood;
+      const iconEl = $('#moodCardIcon');
+      if (iconEl) iconEl.textContent = iconMap[activeMood] || '✨';
+
+      const tagEl = $('#moodCompanionTag') || $('#moodCardState');
+      if (tagEl) tagEl.textContent = moodData.cardTag || moodData.title;
+
+      // Quote & Author
+      const quoteEl = $('#moodCompanionQuote') || $('#moodCardQuote');
+      if (quoteEl) {
+        quoteEl.innerHTML = `&ldquo;${escapeHTML(quoteObj.quote)}&rdquo;<footer style="margin-top:6px; font-size:11px; opacity:0.8; font-style:normal;">— ${escapeHTML(quoteObj.author)}</footer>`;
+      }
+      const authorEl = $('#moodCompanionAuthor');
+      if (authorEl) authorEl.textContent = `— ${quoteObj.author}`;
+
+      // Comforting Message
+      const msgEl = $('#moodCompanionMessage') || $('#moodCardMessage');
+      if (msgEl) msgEl.textContent = moodData.message;
+
+      // Recommendation Box & Link
+      const recBox = $('#moodCardRecBox');
+      const recLink = $('#moodCardRecLink');
+      const recTitle = $('#moodCardRecTitle');
+      if (recWriting && recBox && recLink && recTitle) {
+        recTitle.textContent = `"${recWriting.title}"`;
+        recBox.hidden = false;
+        recLink.onclick = (e) => {
+          e.preventDefault();
+          dismissCompanionCard();
+          navigateTo('reading', recWriting.id);
+        };
+      } else if (recBox) {
+        recBox.hidden = true;
+      }
+
+      const actionBtn = $('#moodCompanionAction');
+      if (actionBtn && recWriting) {
+        actionBtn.hidden = false;
+        actionBtn.innerHTML = `<span>Read &ldquo;${escapeHTML(recWriting.title)}&rdquo;</span> <span>&rarr;</span>`;
+        actionBtn.onclick = () => {
+          dismissCompanionCard();
+          navigateTo('reading', recWriting.id);
+        };
+      } else if (actionBtn) {
+        actionBtn.hidden = true;
+      }
+
+      card.hidden = false;
+      // Force reflow and add visible class for slide-in animation
+      void card.offsetWidth;
+      card.classList.add('visible');
+
+      // Auto-dismiss after 10 seconds (10000ms)
+      autoDismissTimer = setTimeout(() => {
+        dismissCompanionCard();
+      }, 10000);
+    }
+
+    function dismissCompanionCard() {
+      const card = $('#moodCompanionCard');
+      if (!card) return;
+      if (autoDismissTimer) {
+        clearTimeout(autoDismissTimer);
+        autoDismissTimer = null;
+      }
+      card.classList.remove('visible');
+      setTimeout(() => {
+        card.hidden = true;
+      }, 400);
+    }
+
+    return {
+      init,
+      selectMood,
+      openMoodModal,
+      closeMoodModal,
+      dismissCompanionCard
+    };
+  })();
+
   // ——— Guide & Special Features Page ———
   function initGuidePage() {
     // Category tabs filtering
@@ -3145,7 +4587,18 @@
     initZenMode();
     initDraftEngine();
     initGuidePage();
+    ConstellationEngine.init();
+    MoodCompanionManager.init();
     setFooterYear();
+
+    // Register Service Worker for Offline PWA Capabilities
+    if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('[ServiceWorker] Successfully registered with scope:', reg.scope))
+          .catch((err) => console.warn('[ServiceWorker] Registration notice:', err));
+      });
+    }
 
     const adminTools = $('#adminTools');
     if (adminTools) adminTools.hidden = true;

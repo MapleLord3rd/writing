@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Archive — A Personal Literary Collection</title>
   <meta name="description" content="Poems, stories, thoughts, and things I couldn't leave unwritten.">
+  <meta name="theme-color" content="#131110">
+  <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/styles.css?v=2.2" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/styles.css?v=3.0" media="print" onload="this.media='all'">
 </head>
 <body>
 
@@ -89,11 +91,16 @@
       <div class="nav-links" id="navLinks">
         <a href="#" data-nav="home" class="nav-link">Home</a>
         <a href="#" data-nav="archive" class="nav-link">Archive</a>
+        <a href="#" data-nav="constellation" class="nav-link">Constellation</a>
         <a href="#" data-nav="collections" class="nav-link">Collections</a>
         <a href="#" data-nav="timeline" class="nav-link">Timeline</a>
         <a href="#" data-nav="desk" class="nav-link">Writer's Desk</a>
         <a href="#" data-nav="features" class="nav-link">Features & Guide</a>
         <a href="#" data-nav="about" class="nav-link">About</a>
+        <button class="nav-mood-btn" id="btnNavMood" title="Emotional Sanctuary &amp; Mood Companion" aria-label="Open Mood Companion">
+          <span class="nav-mood-icon">🔮</span>
+          <span class="nav-mood-label">Mood</span>
+        </button>
         <div class="ambient-sound-control">
           <button class="theme-toggle ambient-toggle-btn" id="ambientToggleBtn" title="Mode Ambient Soundscapes" aria-label="Toggle mode ambient soundscapes" aria-haspopup="true">
             <svg class="ambient-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -332,6 +339,90 @@
         <!-- Populated by JS -->
       </div>
 
+    </div>
+  </section>
+
+  <!-- ==================== CONSTELLATION / STAR MAP PAGE ==================== -->
+  <section class="page page--constellation" id="page-constellation">
+    <div class="constellation-container">
+      <div class="constellation-hud">
+        <div class="constellation-header">
+          <span class="section-label">Spatial Universe</span>
+          <h2 class="page-title constellation-title">The Constellation Map</h2>
+          <p class="constellation-desc">Every piece of writing is an illuminated star. Connected dynamically by authors, collections, shared tags, and dialogues.</p>
+        </div>
+        <div class="constellation-toolbar">
+          <div class="constellation-filters" id="constellationFilters">
+            <button type="button" class="constellation-filter-btn active" data-filter="all">All Stars</button>
+            <button type="button" class="constellation-filter-btn" data-filter="neerav">Neerav (Crimson)</button>
+            <button type="button" class="constellation-filter-btn" data-filter="avigna">Avigna (Amethyst)</button>
+            <button type="button" class="constellation-filter-btn" data-filter="dialogue">Dialogues &amp; Responses</button>
+          </div>
+          <div class="constellation-actions">
+            <button type="button" class="constellation-tool-btn" id="btnConstellationReset" title="Recenter Star Map">⟲ Recenter</button>
+            <button type="button" class="constellation-tool-btn" id="btnConstellationZoomIn" title="Zoom In">+</button>
+            <button type="button" class="constellation-tool-btn" id="btnConstellationZoomOut" title="Zoom Out">−</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Constellation Canvas Container -->
+      <div class="constellation-canvas-wrapper" id="constellationWrapper">
+        <canvas id="constellationCanvas"></canvas>
+        <div class="constellation-star-tooltip" id="constellationTooltip" hidden></div>
+
+        <!-- Selected Star Inspector Drawer -->
+        <div class="constellation-card-inspector" id="constellationInspector" hidden>
+          <div class="constellation-inspector-header">
+            <div class="constellation-inspector-top-row">
+              <div class="constellation-inspector-badge" id="constellationStarBadge">✦ Star Node</div>
+              <button type="button" class="constellation-inspector-close" id="btnConstellationInspectorClose" aria-label="Close star details" title="Close Details (Esc)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <h3 class="constellation-inspector-title" id="constellationStarTitle">Title</h3>
+            <div class="constellation-inspector-meta" id="constellationStarMeta">Neerav • 3 min read</div>
+          </div>
+          <div class="constellation-inspector-body">
+            <div class="constellation-inspector-excerpt-container">
+              <p class="constellation-inspector-excerpt" id="constellationStarExcerpt">Excerpt...</p>
+            </div>
+            <div class="constellation-inspector-connections-section">
+              <div class="constellation-connections-heading">✦ Cosmic Links &amp; Dialogues</div>
+              <div class="constellation-inspector-connections" id="constellationStarConnections"></div>
+            </div>
+          </div>
+          <div class="constellation-inspector-footer">
+            <button type="button" class="btn-primary constellation-read-btn" id="btnConstellationReadStar">
+              <span>Read Full Piece</span>
+              <span class="read-btn-arrow">→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Star Map Legend -->
+        <div class="constellation-legend" id="constellationLegend">
+          <div class="constellation-legend-item">
+            <span class="legend-dot legend-dot--neerav"></span>
+            <span>Neerav (Archivist)</span>
+          </div>
+          <div class="constellation-legend-item">
+            <span class="legend-dot legend-dot--avigna"></span>
+            <span>Avigna (Muse)</span>
+          </div>
+          <div class="constellation-legend-item">
+            <span class="legend-dot legend-dot--both"></span>
+            <span>Collaborative</span>
+          </div>
+          <div class="constellation-legend-item">
+            <span class="legend-line legend-line--dialogue"></span>
+            <span>Dialogue Link</span>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -761,7 +852,7 @@
           </div>
         </div>
         <span class="section-label">Our Shared Archive</span>
-        <h2 class="page-title about-name">Neerav & Avigna</h2>
+        <h2 class="page-title about-name">Avigna</h2>
 
         <div class="about-text">
           <p>
@@ -922,6 +1013,12 @@
                 <span class="form-hint-pill" id="contentHint">Writing Mode: Preserves line breaks</span>
               </div>
             </div>
+            <div class="form-duel-toolbar" id="formDuelToolbar">
+              <span class="form-duel-label">Co-Authored Stanza Duel:</span>
+              <button type="button" class="btn-duel-tag btn-duel-neerav" id="btnInsertNeeravStanza" title="Insert Neerav Verse Tag">+ [Neerav]</button>
+              <button type="button" class="btn-duel-tag btn-duel-avigna" id="btnInsertAvignaStanza" title="Insert Avigna Verse Tag">+ [Avigna]</button>
+              <button type="button" class="btn-duel-tag btn-duel-both" id="btnInsertBothStanza" title="Insert Co-Authored Verse Tag">+ [Both]</button>
+            </div>
             <textarea
               id="formContent"
               class="form-textarea form-textarea-large"
@@ -931,9 +1028,10 @@
 
 Write freely just as you would in a journal.
 • Press Enter to start a new line
-• Press Enter twice to leave a gap between verses or paragraphs"
+• Press Enter twice to leave a gap between verses or paragraphs
+• Use [Neerav] and [Avigna] headers for alternating stanza duels"
             ></textarea>
-            <span class="form-hint" id="contentSubHint">Tip: Press Enter for new lines, or Enter twice for paragraph/verse gaps.</span>
+            <span class="form-hint" id="contentSubHint">Tip: Press Enter for new lines, or Enter twice for paragraph/verse gaps. Use Stanza Duel tags for alternating poetries.</span>
           </div>
 
           <div class="form-actions">
@@ -1208,6 +1306,105 @@ Write freely just as you would in a journal.
       <textarea id="zenTextarea" class="zen-textarea" placeholder="Let your thoughts flow freely..."></textarea>
     </div>
   </div>
+
+  <!-- Floating Mood Companion & Oracle Card (Bottom Left) -->
+  <aside class="mood-companion-card" id="moodCompanionCard" hidden aria-label="Mood Companion Sanctuary">
+    <button type="button" class="mood-companion-close" id="btnMoodCardClose" aria-label="Dismiss companion card" title="Dismiss companion card (Esc)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <div class="mood-companion-badge">
+      <span class="mood-companion-icon" id="moodCardIcon">✨</span>
+      <span class="mood-companion-state" id="moodCardState">Comforting Sanctuary</span>
+    </div>
+    <blockquote class="mood-companion-quote" id="moodCardQuote">
+      &ldquo;Even the darkest night will end and the sun will rise.&rdquo;
+    </blockquote>
+    <p class="mood-companion-sub" id="moodCardMessage">The archive has softened its atmosphere for you.</p>
+    <div class="mood-companion-recommendation" id="moodCardRecBox" hidden>
+      <span class="mood-rec-label">Recommended for you:</span>
+      <a href="#" class="mood-rec-link" id="moodCardRecLink">
+        <span class="mood-rec-title" id="moodCardRecTitle">Title</span>
+        <span class="mood-rec-arrow">&rarr;</span>
+      </a>
+    </div>
+    <div class="mood-companion-actions">
+      <button type="button" class="mood-companion-btn" id="btnMoodChange">Change Mood</button>
+    </div>
+  </aside>
+
+  <!-- Interactive Mood Check-In Modal / Selector -->
+  <div class="modal mood-modal" id="moodModal" role="dialog" aria-labelledby="moodModalTitle" aria-modal="true" hidden>
+    <div class="modal-overlay" id="moodModalOverlay"></div>
+    <div class="modal-content modal-content--mood">
+      <div class="modal-header">
+        <div class="mood-modal-header-text">
+          <span class="section-label">Emotional Sanctuary</span>
+          <h2 class="modal-title" id="moodModalTitle">How is your heart feeling today?</h2>
+          <p class="mood-modal-desc">The Archive adapts its light, sounds, words, and poetry to meet you exactly where you are.</p>
+        </div>
+        <button class="modal-close" id="moodModalClose" aria-label="Close dialog" title="Close Sanctuary (Esc)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="mood-selection-grid">
+        <button type="button" class="mood-card-btn" data-mood="sad">
+          <span class="mood-emoji">🌧️</span>
+          <div class="mood-info">
+            <span class="mood-name">Melancholic / Sad</span>
+            <span class="mood-hint">Warm uplifting golden light, gentle acoustic piano &amp; comforting reflections</span>
+          </div>
+        </button>
+        <button type="button" class="mood-card-btn" data-mood="anxious">
+          <span class="mood-emoji">🌊</span>
+          <div class="mood-info">
+            <span class="mood-name">Anxious / Restless</span>
+            <span class="mood-hint">Calming ocean shoreline, slower breathing pacing &amp; grounding words</span>
+          </div>
+        </button>
+        <button type="button" class="mood-card-btn" data-mood="nostalgic">
+          <span class="mood-emoji">🍂</span>
+          <div class="mood-info">
+            <span class="mood-name">Nostalgic / Longing</span>
+            <span class="mood-hint">Warm autumn leaves, crackling vinyl atmosphere &amp; memories of yesterday</span>
+          </div>
+        </button>
+        <button type="button" class="mood-card-btn" data-mood="joyful">
+          <span class="mood-emoji">✨</span>
+          <div class="mood-info">
+            <span class="mood-name">Joyful / Inspired</span>
+            <span class="mood-hint">Enchanted crystal stardust, cheerful wind chimes &amp; celebratory verses</span>
+          </div>
+        </button>
+        <button type="button" class="mood-card-btn" data-mood="weary">
+          <span class="mood-emoji">🌙</span>
+          <div class="mood-info">
+            <span class="mood-name">Tired / Weary</span>
+            <span class="mood-hint">Midnight obsidian starfield, gentle nocturnal crickets &amp; soft lullabies</span>
+          </div>
+        </button>
+        <button type="button" class="mood-card-btn" data-mood="peaceful">
+          <span class="mood-emoji">🌸</span>
+          <div class="mood-info">
+            <span class="mood-name">Serene / Peaceful</span>
+            <span class="mood-hint">Cherry blossom spring breeze, quiet temple garden &amp; meditative lines</span>
+          </div>
+        </button>
+        <button type="button" class="mood-card-btn mood-card-btn--neutral" data-mood="neutral">
+          <span class="mood-emoji">⚖️</span>
+          <div class="mood-info">
+            <span class="mood-name">Neutral / Natural Sanctuary</span>
+            <span class="mood-hint">Pure unaltered archive ambiance with standard particle speeds &amp; no mood tinting</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 <!-- End Main Content -->
 
@@ -1215,9 +1412,9 @@ Write freely just as you would in a journal.
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data/writings.js?v=2.6"></script>
   <!-- Atmosphere & Theme Engine -->
-  <script src="js/atmosphere.js?v=1.0"></script>
+  <script src="js/atmosphere.js?v=1.1"></script>
   <!-- Ambient Audio Engine -->
   <script src="js/audio.js?v=1.0"></script>
-  <script src="js/app.js?v=2.6"></script>
+  <script src="js/app.js?v=3.0"></script>
 </body>
 </html>
