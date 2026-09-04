@@ -1676,7 +1676,6 @@
     function renderCommentThread(c, isReply = false) {
       const isAv = isAvigna(c.author);
       const authorDisplayName = getAuthorDisplayName(c.author);
-      const avatarLetter = isAv ? '✦' : 'N';
       const authorBadgeClass = isAv ? 'comment-author-badge--avigna' : 'comment-author-badge--neerav';
       const timeStr = formatRelativeTime(c.timestamp);
       const isOwnComment = getCurrentUser() === (isAv ? 'avigna' : 'neerav');
@@ -1686,7 +1685,6 @@
         <div class="comment-item ${isReply ? 'comment-item--reply' : ''}" id="comment-${c.id}" data-comment-id="${c.id}">
           <div class="comment-item-header">
             <div class="comment-author-info">
-              <span class="comment-author-avatar ${isAv ? 'user--avigna' : ''}">${avatarLetter}</span>
               <span class="comment-author-badge ${authorBadgeClass}">${escapeHTML(authorDisplayName)}</span>
               <span class="comment-timestamp">${escapeHTML(timeStr)}</span>
             </div>

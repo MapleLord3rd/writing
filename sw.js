@@ -3,12 +3,17 @@
    Offline caching, asset preloading, resilient background sync
    ============================================================ */
 
-const CACHE_NAME = 'archive-cache-v3.0';
+const CACHE_NAME = 'archive-cache-v3.8';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/styles.css',
+  './css/cursors/cursor_default.png',
+  './css/cursors/cursor_pointer.png',
+  './css/cursors/cursor_hover.png',
+  './css/cursors/cursor_grab.png',
+  './css/cursors/cursor_grabbing.png',
   './data/writings.js',
   './js/atmosphere.js',
   './js/audio.js',

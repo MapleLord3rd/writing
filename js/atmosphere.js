@@ -1763,90 +1763,111 @@
             ctx.restore();
           }
 
-          // 3. Multi-Directional Shooting Stars
-          if (performance.now() > engine.nextMeteorTime && engine.meteors.length === 0) {
-            const meteorDelay = (4500 + Math.random() * 3500) / Math.max(0.3, mood.activityLevel);
+          // 3. Majestic Full-Sky Shooting Stars (Traversing across the entire viewport)
+          if (performance.now() > engine.nextMeteorTime && engine.meteors.length < 2) {
+            const meteorDelay = (3800 + Math.random() * 2800) / Math.max(0.3, mood.activityLevel);
             engine.nextMeteorTime = performance.now() + meteorDelay;
 
             const trajectoryType = Math.floor(Math.random() * 4);
             let startX, startY, angle;
 
             if (trajectoryType === 0) {
-              startX = Math.random() * (engine.width * 0.45) - 20;
-              startY = Math.random() * (engine.height * 0.35) - 20;
-              angle = Math.PI * 0.22 + (Math.random() - 0.5) * 0.25;
+              // Diagonal Top-Left to Bottom-Right across screen
+              const fromTop = Math.random() > 0.4;
+              startX = fromTop ? Math.random() * (engine.width * 0.5) : -50;
+              startY = fromTop ? -50 : Math.random() * (engine.height * 0.4);
+              angle = Math.PI * 0.19 + (Math.random() - 0.5) * 0.12;
             } else if (trajectoryType === 1) {
-              startX = Math.random() * (engine.width * 0.45) + engine.width * 0.55;
-              startY = Math.random() * (engine.height * 0.35) - 20;
-              angle = Math.PI * 0.78 + (Math.random() - 0.5) * 0.25;
+              // Diagonal Top-Right to Bottom-Left across screen
+              const fromTop = Math.random() > 0.4;
+              startX = fromTop ? Math.random() * (engine.width * 0.5) + engine.width * 0.5 : engine.width + 50;
+              startY = fromTop ? -50 : Math.random() * (engine.height * 0.4);
+              angle = Math.PI * 0.81 + (Math.random() - 0.5) * 0.12;
             } else if (trajectoryType === 2) {
-              startX = Math.random() * (engine.width * 0.7) + engine.width * 0.15;
-              startY = -30;
-              angle = Math.PI * 0.5 + (Math.random() - 0.5) * 0.3;
+              // High-Altitude Horizontal Crosser (Left to Right)
+              startX = -60;
+              startY = Math.random() * (engine.height * 0.35) + 15;
+              angle = Math.PI * 0.08 + (Math.random() - 0.5) * 0.06;
             } else {
-              startX = -30;
-              startY = Math.random() * (engine.height * 0.5) + 30;
-              angle = Math.PI * 0.12 + (Math.random() - 0.5) * 0.15;
+              // High-Altitude Horizontal Crosser (Right to Left)
+              startX = engine.width + 60;
+              startY = Math.random() * (engine.height * 0.35) + 15;
+              angle = Math.PI * 0.92 + (Math.random() - 0.5) * 0.06;
             }
 
-            const speed = (Math.random() * 14 + 18) * mood.movementSpeedMultiplier;
-            const length = Math.random() * 140 + 100;
+            const speed = (Math.random() * 6 + 13) * mood.movementSpeedMultiplier;
+            const length = Math.random() * 120 + 160;
             const palettes = [
-              { trail: '192, 132, 252', glow: '#c084fc' },
-              { trail: '56, 189, 248', glow: '#38bdf8' },
-              { trail: '251, 191, 36', glow: '#fbbf24' },
-              { trail: '244, 114, 182', glow: '#f472b6' }
+              { trail: '192, 132, 252', glow: '#c084fc' }, // Starlight Violet
+              { trail: '56, 189, 248', glow: '#38bdf8' },  // Celestial Cyan
+              { trail: '251, 191, 36', glow: '#fbbf24' },  // Solar Gold
+              { trail: '244, 114, 182', glow: '#f472b6' }, // Rose Nebula
+              { trail: '226, 232, 240', glow: '#ffffff' }  // Pure Stardust White
             ];
             const palette = palettes[Math.floor(Math.random() * palettes.length)];
 
             engine.meteors.push({
               x: startX,
               y: startY,
+              startX,
+              startY,
+              distTraveled: 0,
               angle,
               speed,
               length,
-              life: 1.0,
-              decay: Math.random() * 0.016 + 0.018,
               palette
             });
           }
 
           for (let m = engine.meteors.length - 1; m >= 0; m--) {
             const met = engine.meteors[m];
-            met.x += Math.cos(met.angle) * met.speed;
-            met.y += Math.sin(met.angle) * met.speed;
-            met.life -= met.decay;
-
-            if (Math.random() > 0.3 && engine.sparkles.length < 60) {
-              engine.sparkles.push({
-                x: met.x - Math.cos(met.angle) * (Math.random() * met.length * 0.6),
-                y: met.y - Math.sin(met.angle) * (Math.random() * met.length * 0.6),
-                dx: (Math.random() - 0.5) * 1.5,
-                dy: (Math.random() - 0.5) * 1.5,
-                alpha: met.life,
-                decay: 0.035,
-                r: Math.random() * 1.8 + 0.8,
-                color: `rgba(${met.palette.trail}, 0.8)`
-              });
-            }
-
-            if (met.life <= 0 || met.x < -100 || met.x > engine.width + 150 || met.y > engine.height + 150) {
-              engine.meteors.splice(m, 1);
-              continue;
-            }
+            const stepX = Math.cos(met.angle) * met.speed * (dt * 60);
+            const stepY = Math.sin(met.angle) * met.speed * (dt * 60);
+            met.x += stepX;
+            met.y += stepY;
+            met.distTraveled += Math.hypot(stepX, stepY);
 
             const tailX = met.x - Math.cos(met.angle) * met.length;
             const tailY = met.y - Math.sin(met.angle) * met.length;
+
+            // Fade in gently as it enters the sky, stay 100% luminous across the sky
+            const fadeIn = Math.min(1.0, met.distTraveled / 140);
+            const alpha = fadeIn * mood.particleOpacityMultiplier;
+
+            // Emit sparkling stardust trail as it traverses across the visible sky
+            const inSky = met.x >= -40 && met.x <= engine.width + 40 && met.y >= -40 && met.y <= engine.height + 40;
+            if (inSky && Math.random() > 0.22 && engine.sparkles.length < 80) {
+              const sparkOffset = Math.random() * met.length * 0.75;
+              engine.sparkles.push({
+                x: met.x - Math.cos(met.angle) * sparkOffset + (Math.random() - 0.5) * 4,
+                y: met.y - Math.sin(met.angle) * sparkOffset + (Math.random() - 0.5) * 4,
+                dx: (Math.random() - 0.5) * 0.9 - Math.cos(met.angle) * 0.35,
+                dy: (Math.random() - 0.5) * 0.9 - Math.sin(met.angle) * 0.35,
+                alpha: alpha * 0.9,
+                decay: Math.random() * 0.022 + 0.015,
+                r: Math.random() * 2.0 + 0.8,
+                color: `rgba(${met.palette.trail}, 0.85)`
+              });
+            }
+
+            // Remove only when BOTH the meteor head and tail have completely exited the viewport
+            const isHeadOff = (met.x < -100 || met.x > engine.width + 100 || met.y < -100 || met.y > engine.height + 100);
+            const isTailOff = (tailX < -100 || tailX > engine.width + 100 || tailY < -100 || tailY > engine.height + 100);
+
+            if (met.distTraveled > 200 && isHeadOff && isTailOff) {
+              engine.meteors.splice(m, 1);
+              continue;
+            }
 
             ctx.save();
 
             // Pass 1: Wide diffuse bloom trail
             const bloomGrad = ctx.createLinearGradient(tailX, tailY, met.x, met.y);
             bloomGrad.addColorStop(0, `rgba(${met.palette.trail}, 0)`);
-            bloomGrad.addColorStop(0.5, `rgba(${met.palette.trail}, ${met.life * 0.35 * mood.particleOpacityMultiplier})`);
-            bloomGrad.addColorStop(1, `rgba(${met.palette.trail}, ${met.life * 0.75 * mood.particleOpacityMultiplier})`);
+            bloomGrad.addColorStop(0.4, `rgba(${met.palette.trail}, ${alpha * 0.35})`);
+            bloomGrad.addColorStop(1, `rgba(${met.palette.trail}, ${alpha * 0.75})`);
             ctx.strokeStyle = bloomGrad;
-            ctx.lineWidth = 7.5;
+            ctx.lineWidth = 8.5;
             ctx.beginPath();
             ctx.moveTo(tailX, tailY);
             ctx.lineTo(met.x, met.y);
@@ -1855,38 +1876,40 @@
             // Pass 2: Bright luminous beam
             const grad = ctx.createLinearGradient(tailX, tailY, met.x, met.y);
             grad.addColorStop(0, `rgba(${met.palette.trail}, 0)`);
-            grad.addColorStop(0.6, `rgba(${met.palette.trail}, ${met.life * 0.85 * mood.particleOpacityMultiplier})`);
-            grad.addColorStop(1, `rgba(255, 255, 255, ${met.life * 0.98 * mood.particleOpacityMultiplier})`);
+            grad.addColorStop(0.6, `rgba(${met.palette.trail}, ${alpha * 0.85})`);
+            grad.addColorStop(1, `rgba(255, 255, 255, ${alpha * 0.98})`);
             ctx.strokeStyle = grad;
-            ctx.lineWidth = 3.2;
+            ctx.lineWidth = 3.6;
             ctx.beginPath();
             ctx.moveTo(tailX, tailY);
             ctx.lineTo(met.x, met.y);
             ctx.stroke();
 
             // Pass 3: Pure white intense inner core
-            const coreGrad = ctx.createLinearGradient(tailX + (met.x - tailX) * 0.4, tailY + (met.y - tailY) * 0.4, met.x, met.y);
+            const coreStartX = tailX + (met.x - tailX) * 0.35;
+            const coreStartY = tailY + (met.y - tailY) * 0.35;
+            const coreGrad = ctx.createLinearGradient(coreStartX, coreStartY, met.x, met.y);
             coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-            coreGrad.addColorStop(1, `rgba(255, 255, 255, ${met.life})`);
+            coreGrad.addColorStop(1, `rgba(255, 255, 255, ${alpha})`);
             ctx.strokeStyle = coreGrad;
-            ctx.lineWidth = 1.4;
+            ctx.lineWidth = 1.6;
             ctx.beginPath();
-            ctx.moveTo(tailX + (met.x - tailX) * 0.4, tailY + (met.y - tailY) * 0.4);
+            ctx.moveTo(coreStartX, coreStartY);
             ctx.lineTo(met.x, met.y);
             ctx.stroke();
 
             // Glowing meteor head with intense bloom
             ctx.fillStyle = '#ffffff';
-            ctx.shadowBlur = 22 * mood.pulseIntensity;
+            ctx.shadowBlur = 24 * mood.pulseIntensity;
             ctx.shadowColor = met.palette.glow;
             ctx.beginPath();
-            ctx.arc(met.x, met.y, 3.4, 0, Math.PI * 2);
+            ctx.arc(met.x, met.y, 3.6, 0, Math.PI * 2);
             ctx.fill();
 
             // Outer head corona
-            ctx.fillStyle = `rgba(${met.palette.trail}, ${met.life * 0.7 * mood.particleOpacityMultiplier})`;
+            ctx.fillStyle = `rgba(${met.palette.trail}, ${alpha * 0.75})`;
             ctx.beginPath();
-            ctx.arc(met.x, met.y, 6.5, 0, Math.PI * 2);
+            ctx.arc(met.x, met.y, 7.0, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
@@ -2071,18 +2094,6 @@
             p.x += (p.dx * mood.particleSpeedMultiplier) + Math.sin(time * 1.4 * mood.wanderFrequency + i) * 0.4 * mood.movementVariance;
             p.y += p.dy * mood.particleSpeedMultiplier;
             p.rot += p.rotSpeed * mood.movementVariance;
-
-            // Interactive pointer wind deflection for sakura
-            if (engine.pointer.x !== -1000) {
-              const pdx = p.x - engine.pointer.x;
-              const pdy = p.y - engine.pointer.y;
-              const pdist = Math.hypot(pdx, pdy);
-              if (pdist < 130 && pdist > 0) {
-                const force = (130 - pdist) / 130;
-                p.x += (pdx / pdist) * force * 3.5 + engine.pointer.vx * 0.35;
-                p.y += (pdy / pdist) * force * 3.5 + engine.pointer.vy * 0.35;
-              }
-            }
 
             if (p.y > engine.height + 15) { p.y = -15; p.x = Math.random() * engine.width; }
             if (p.x > engine.width + 15) { p.x = -15; p.y = Math.random() * engine.height; }
