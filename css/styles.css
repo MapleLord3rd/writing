@@ -2933,11 +2933,15 @@ input, select {
   width: 100% !important;
   height: 100% !important;
   min-height: 100vh !important;
+  min-height: 100dvh !important;
   background: var(--bg) !important;
   z-index: 999999 !important;
-  display: grid !important;
-  place-items: center !important;
-  padding: var(--sp-xl) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: clamp(0.75rem, 2.5vw, 1.5rem) !important;
   box-sizing: border-box !important;
   transition: opacity 0.5s var(--ease-out), visibility 0.5s var(--ease-out) !important;
 }
@@ -2954,8 +2958,8 @@ input, select {
   background: var(--bg-card);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  padding: var(--sp-3xl) var(--sp-2xl);
-  max-width: 420px;
+  padding: clamp(1.25rem, 3vh, 2rem) clamp(1.25rem, 3vw, 1.85rem);
+  max-width: 400px;
   width: 100%;
   text-align: center;
   box-shadow: var(--shadow-lg), 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -2963,7 +2967,7 @@ input, select {
   flex-direction: column;
   align-items: center;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   animation: modalIn 0.5s var(--ease-out);
 }
 
@@ -2978,26 +2982,32 @@ input, select {
 }
 
 .lock-icon {
-  width: 72px;
-  height: 72px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: var(--accent-faint);
   color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--sp-lg);
+  margin-bottom: var(--sp-xs);
   border: 1px solid var(--border);
   box-shadow: 0 4px 12px var(--accent-faint);
+  flex-shrink: 0;
+}
+
+.lock-icon svg {
+  width: 28px;
+  height: 28px;
 }
 
 .lock-title {
   font-family: var(--font-serif);
-  font-size: var(--fs-3xl);
+  font-size: clamp(1.6rem, 3.5vw, 2.1rem);
   font-weight: 300;
   letter-spacing: -0.02em;
   color: var(--text);
-  margin-bottom: var(--sp-xs);
+  margin-bottom: 2px;
 }
 
 .lock-subtitle {
@@ -3006,19 +3016,28 @@ input, select {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  margin-bottom: var(--sp-2xl);
+  margin-bottom: var(--sp-sm);
 }
 
-.lock-form {
+.lock-form,
+.lock-setup {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-md);
+  gap: 10px;
+  align-items: center;
+}
+
+.lock-identity-picker {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
 }
 
 .lock-input {
   width: 100%;
-  padding: 14px 18px;
+  padding: 11px 16px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--bg);
@@ -3040,7 +3059,7 @@ input, select {
 
 .lock-btn {
   width: 100%;
-  padding: 14px 20px;
+  padding: 12px 18px;
   background: var(--accent);
   color: #ffffff;
   border: none;
@@ -3068,8 +3087,9 @@ input, select {
   border: 2px solid var(--border-strong) !important;
   box-shadow: none !important;
   font-family: var(--font-serif) !important;
-  font-size: var(--fs-lg) !important;
-  padding: 16px 20px !important;
+  font-size: var(--fs-md) !important;
+  padding: 10px 18px !important;
+  width: 110px !important;
   transition: all var(--duration-fast);
   position: relative;
   overflow: hidden;
@@ -3115,10 +3135,48 @@ input, select {
 }
 
 .lock-error {
-  margin-top: var(--sp-md);
+  margin-top: 8px;
   font-size: var(--fs-xs);
   color: #e53935;
   font-family: var(--font-mono);
+}
+
+@media (max-height: 650px) {
+  .lock-screen {
+    padding: var(--sp-xs) !important;
+  }
+  .lock-screen-content {
+    padding: 0.85rem 1.25rem !important;
+  }
+  .lock-icon {
+    width: 38px !important;
+    height: 38px !important;
+    margin-bottom: 2px !important;
+  }
+  .lock-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .lock-title {
+    font-size: 1.4rem !important;
+  }
+  .lock-subtitle {
+    margin-bottom: 4px !important;
+  }
+  .lock-form,
+  .lock-setup {
+    gap: 8px !important;
+  }
+  .lock-btn--identity {
+    padding: 8px 14px !important;
+    font-size: var(--fs-base) !important;
+  }
+  .lock-input {
+    padding: 8px 12px !important;
+  }
+  .lock-btn {
+    padding: 9px 14px !important;
+  }
 }
 
 @keyframes lockShake {
