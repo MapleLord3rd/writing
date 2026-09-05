@@ -1398,20 +1398,37 @@ input, select {
 /* ---------- Archive Controls ---------- */
 .archive-controls {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-lg);
+  flex-direction: column;
+  gap: var(--sp-md);
   margin-bottom: var(--sp-xl);
   padding-bottom: var(--sp-lg);
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.archive-controls-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-md);
+  width: 100%;
 }
 
 .archive-author-filters {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--sp-xs);
   padding-right: var(--sp-md);
   border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.archive-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  flex-shrink: 0;
 }
 
 .author-filter-label {
@@ -2253,8 +2270,8 @@ input, select {
 /* Body scroll locking when mobile nav drawer is open */
 body.nav-open {
   overflow: hidden !important;
-  touch-action: none !important;
-  -webkit-overflow-scrolling: auto !important;
+  /* Remove touch-action: none to allow scroll inside the nav drawer */
+  /* touch-action: none !important; */
 }
 
 /* ---------- 1. Tablets & Medium Screens (max-width: 1080px) ---------- */
@@ -2358,6 +2375,7 @@ body.nav-open {
     max-width: calc(100vw - 32px) !important;
     max-height: min(540px, calc(100dvh - 80px)) !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     z-index: 2200 !important;
     background: rgba(24, 20, 32, 0.98) !important;
@@ -2377,6 +2395,18 @@ body.nav-open {
   .mode-opt-btn {
     min-height: 52px !important;
     padding: 8px 4px !important;
+  }
+
+  .reader-btn {
+    min-height: 40px !important;
+  }
+
+  .ambient-power-btn {
+    min-height: 38px !important;
+    min-width: 64px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   /* Fluid Tablet Grid Layouts (2 Columns) */
@@ -2419,6 +2449,15 @@ body.nav-open {
     flex-direction: column;
     align-items: stretch;
     gap: var(--sp-md);
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .archive-controls-primary {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-sm);
+    width: 100%;
   }
 
   .archive-author-filters {
@@ -2427,14 +2466,7 @@ body.nav-open {
     padding-bottom: var(--sp-xs);
     border-bottom: 1px solid var(--border);
     justify-content: center;
-  }
-
-  .archive-filters {
-    overflow-x: auto;
-    padding-bottom: var(--sp-sm);
-    -webkit-overflow-scrolling: touch;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
+    width: 100%;
   }
 
   .archive-search {
@@ -2442,20 +2474,64 @@ body.nav-open {
     min-width: 0;
   }
 
-  .surprise-filter-btn {
+  .archive-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
     width: 100%;
+  }
+
+  .surprise-filter-btn {
+    flex: 1;
     justify-content: center;
     min-height: 44px;
-    padding: 10px 16px;
+    padding: 10px 14px;
+    font-size: var(--fs-xs);
+    width: auto;
   }
 
   .archive-sort {
-    width: 100%;
+    flex: 1;
+    width: auto;
   }
 
   .sort-select {
     width: 100%;
     min-height: 44px;
+  }
+
+  .archive-filters {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 2px 8px 2px;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: var(--sp-xs);
+    width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .archive-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .archive-filters .filter-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Form Inputs & Selects on Mobile (iOS Safari auto-zoom prevention & tap target) */
+  input,
+  select,
+  textarea,
+  .form-input,
+  .form-textarea,
+  .sort-select {
+    font-size: 16px !important;
   }
 
   /* Single Column Mobile Card Grids */

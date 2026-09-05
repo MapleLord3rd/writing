@@ -181,7 +181,6 @@
       const { data, error } = await supabase
         .from('works')
         .select('*')
-        .eq('is_published', true)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -190,7 +189,38 @@
       }
 
       if (Array.isArray(data)) {
-        _databaseWritings = data.map(mapWorkFromDb);
+        // Collect tombstones (is_published === false)
+        const tombstones = data.filter(r => r.is_published === false).map(r => r.id);
+        if (tombstones.length > 0) {
+          const currentDeleted = getDeletedIds();
+          let updated = false;
+          tombstones.forEach(id => {
+            if (!currentDeleted.includes(id)) {
+              currentDeleted.push(id);
+              updated = true;
+            }
+          });
+          if (updated) {
+            localStorage.setItem(DELETED_KEY, JSON.stringify(currentDeleted));
+            // Purge tombstones from all backup storage keys on this device
+            for (const key of BACKUP_STORAGE_KEYS) {
+              try {
+                const stored = localStorage.getItem(key);
+                if (stored) {
+                  const list = JSON.parse(stored);
+                  if (Array.isArray(list)) {
+                    const filtered = list.filter(item => item && !tombstones.includes(item.id));
+                    localStorage.setItem(key, JSON.stringify(filtered));
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+        // Active published works
+        const published = data.filter(r => r.is_published !== false);
+        _databaseWritings = published.map(mapWorkFromDb);
         invalidateWritingsCache();
       }
     } catch (e) {
@@ -397,14 +427,24 @@
       return false;
     }
 
-    // 1. Mark in local deleted list & purge from local custom storage
+    // 1. Mark in local deleted list & purge from all local storage backup keys
     const deletedIds = getDeletedIds();
     if (!deletedIds.includes(id)) {
       deletedIds.push(id);
       localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
     }
-    const custom = getCustomWritings().filter(w => w.id !== id);
-    saveCustomWritings(custom);
+    for (const key of BACKUP_STORAGE_KEYS) {
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const list = JSON.parse(stored);
+          if (Array.isArray(list)) {
+            const filtered = list.filter(w => w && w.id !== id);
+            localStorage.setItem(key, JSON.stringify(filtered));
+          }
+        }
+      } catch (e) {}
+    }
 
     // Also remove from in-memory database cache
     if (Array.isArray(_databaseWritings)) {
@@ -412,13 +452,23 @@
     }
     invalidateWritingsCache();
 
-    // 2. Delete from Supabase
+    // 2. Sync deletion to Supabase using a tombstone (is_published: false)
+    // so peer devices and mobile browsers detect and purge the item immediately
     if (supabase) {
       try {
         const { error } = await supabase
           .from('works')
-          .delete()
-          .eq('id', id);
+          .upsert([{
+            id: id,
+            title: writing ? writing.title : 'Deleted Piece',
+            author: writing ? writing.author : 'neerav',
+            type: writing ? writing.type : 'poem',
+            date: writing ? writing.date : new Date().toISOString().split('T')[0],
+            excerpt: '',
+            content: '',
+            is_published: false,
+            updated_at: new Date().toISOString()
+          }]);
 
         if (error) {
           console.warn('Supabase delete notice:', error.message);
@@ -438,7 +488,37 @@
     try {
       supabase
         .channel('public:works')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'works' }, async () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'works' }, async (payload) => {
+          if (payload) {
+            const delId = (payload.eventType === 'DELETE' && payload.old && payload.old.id)
+              ? payload.old.id
+              : (payload.new && payload.new.is_published === false) ? payload.new.id : null;
+
+            if (delId) {
+              const currentDeleted = getDeletedIds();
+              if (!currentDeleted.includes(delId)) {
+                currentDeleted.push(delId);
+                localStorage.setItem(DELETED_KEY, JSON.stringify(currentDeleted));
+              }
+              for (const key of BACKUP_STORAGE_KEYS) {
+                try {
+                  const stored = localStorage.getItem(key);
+                  if (stored) {
+                    const list = JSON.parse(stored);
+                    if (Array.isArray(list)) {
+                      const filtered = list.filter(w => w && w.id !== delId);
+                      localStorage.setItem(key, JSON.stringify(filtered));
+                    }
+                  }
+                } catch (e) {}
+              }
+              if (Array.isArray(_databaseWritings)) {
+                _databaseWritings = _databaseWritings.filter(w => w.id !== delId);
+              }
+              invalidateWritingsCache();
+            }
+          }
+
           await loadSharedWorks();
           if (currentPage === 'archive') {
             renderArchive();
@@ -1024,7 +1104,9 @@
       readerPanel.hidden = page !== 'reading';
     }
 
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
 
     if (page !== 'constellation') {
       ConstellationEngine.stop();
@@ -1042,6 +1124,8 @@
         break;
       case 'archive':
         $('#page-archive').classList.add('active');
+        const archiveFilters = $('.archive-filters');
+        if (archiveFilters) archiveFilters.scrollLeft = 0;
         renderArchive();
         break;
       case 'reading':

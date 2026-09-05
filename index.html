@@ -284,12 +284,36 @@
 
       <!-- Filters -->
       <div class="archive-controls reveal-up">
-        <div class="archive-author-filters" role="tablist" aria-label="Filter by author">
-          <span class="author-filter-label">Author:</span>
-          <button class="author-filter-btn active" data-author-filter="all" role="tab" aria-selected="true">Both</button>
-          <button class="author-filter-btn" data-author-filter="neerav" role="tab" aria-selected="false">Neerav</button>
-          <button class="author-filter-btn" data-author-filter="avigna" role="tab" aria-selected="false">Avigna</button>
+        <div class="archive-controls-primary">
+          <div class="archive-author-filters" role="tablist" aria-label="Filter by author">
+            <span class="author-filter-label">Author:</span>
+            <button class="author-filter-btn active" data-author-filter="all" role="tab" aria-selected="true">Both</button>
+            <button class="author-filter-btn" data-author-filter="neerav" role="tab" aria-selected="false">Neerav</button>
+            <button class="author-filter-btn" data-author-filter="avigna" role="tab" aria-selected="false">Avigna</button>
+          </div>
+          <div class="archive-search">
+            <label for="searchInput" class="sr-only">Search writings</label>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search the archive..." autocomplete="off">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
+          <div class="archive-actions">
+            <button type="button" class="surprise-filter-btn" id="btnArchiveSurprise" title="Open a random writing">
+              <span>🎲</span>
+              <span>Surprise Me</span>
+            </button>
+            <div class="archive-sort">
+              <label for="sortSelect" class="sr-only">Sort writings</label>
+              <select id="sortSelect" class="sort-select">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title">By Title</option>
+              </select>
+            </div>
+          </div>
         </div>
+
         <div class="archive-filters" role="tablist" aria-label="Filter by type">
           <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">All</button>
           <button class="filter-btn" data-filter="favorites" role="tab" aria-selected="false">✦ Favorites</button>
@@ -300,25 +324,6 @@
           <button class="filter-btn" data-filter="article" role="tab" aria-selected="false">Articles</button>
           <button class="filter-btn" data-filter="essay" role="tab" aria-selected="false">Essays</button>
           <button class="filter-btn" data-filter="note" role="tab" aria-selected="false">Notes</button>
-        </div>
-        <div class="archive-search">
-          <label for="searchInput" class="sr-only">Search writings</label>
-          <input type="text" id="searchInput" class="search-input" placeholder="Search the archive..." autocomplete="off">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </div>
-        <button type="button" class="surprise-filter-btn" id="btnArchiveSurprise" title="Open a random writing">
-          <span>🎲</span>
-          <span>Surprise Me</span>
-        </button>
-        <div class="archive-sort">
-          <label for="sortSelect" class="sr-only">Sort writings</label>
-          <select id="sortSelect" class="sort-select">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="title">By Title</option>
-          </select>
         </div>
       </div>
 
