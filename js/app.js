@@ -466,25 +466,37 @@
     // so peer devices and mobile browsers detect and purge the item immediately
     if (supabase) {
       try {
-        const { error } = await supabase
-          .from('works')
-          .upsert([{
-            id: id,
-            title: writing ? writing.title : 'Deleted Piece',
-            author: writing ? writing.author : 'neerav',
-            type: writing ? writing.type : 'poem',
-            date: writing ? writing.date : new Date().toISOString().split('T')[0],
-            excerpt: '',
-            content: '',
-            is_published: false,
-            updated_at: new Date().toISOString()
-          }]);
-
-        if (error) {
-          console.warn('Supabase delete notice:', error.message);
-        } else {
-          await loadSharedWorks();
+        if (!currentAuthUid) {
+          await initSupabaseAuth();
         }
+
+        const tombstoneRow = {
+          id: id,
+          title: writing ? writing.title : 'Deleted Piece',
+          author: writing ? writing.author : 'neerav',
+          type: writing ? writing.type : 'poem',
+          date: writing ? writing.date : new Date().toISOString().split('T')[0],
+          excerpt: '',
+          content: '',
+          is_published: false,
+          updated_at: new Date().toISOString(),
+          author_id: currentAuthUid || (writing ? writing.author_id : null)
+        };
+
+        const { error: upsertErr } = await supabase
+          .from('works')
+          .upsert([tombstoneRow]);
+
+        if (upsertErr) {
+          console.warn('Supabase delete upsert notice:', upsertErr.message);
+          // Fallback: update is_published to false
+          await supabase
+            .from('works')
+            .update({ is_published: false, updated_at: new Date().toISOString() })
+            .eq('id', id);
+        }
+
+        await loadSharedWorks();
       } catch (err) {
         console.warn('Supabase delete error:', err);
       }

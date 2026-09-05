@@ -105,7 +105,14 @@ But friendship gives it room to grow...`,
    DELETED WRITINGS (GLOBAL BLACKLIST)
    Add IDs of any writings here to permanently remove them across all devices:
    ============================================================ */
-const DELETED_WRITINGS = ['a-friend-like-you', 'our-first-story'];
+const DELETED_WRITINGS = [
+  'a-friend-like-you',
+  'our-first-story',
+  'a-1788598587907',
+  'a-1788598709046',
+  'a-1788600281203',
+  'a-1788600364176'
+];
 
 
 /* ============================================================
