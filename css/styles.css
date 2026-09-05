@@ -3523,15 +3523,16 @@ select.form-input option {
 
 .admin-tool-btn.bookmarked,
 .admin-tool-btn.favorited {
-  color: var(--gold);
-  border-color: var(--gold);
-  background: var(--gold-faint);
+  color: var(--gold) !important;
+  border-color: var(--gold) !important;
+  background: var(--gold-faint) !important;
 }
 
 .admin-tool-btn.bookmarked svg,
 .admin-tool-btn.favorited svg {
-  fill: var(--gold);
-  color: var(--gold);
+  fill: var(--gold) !important;
+  stroke: var(--gold) !important;
+  color: var(--gold) !important;
 }
 
 /* Data tools */
@@ -5520,7 +5521,13 @@ select.form-input option {
 }
 
 .card-bookmark-later-btn.bookmarked {
-  color: var(--gold);
+  color: var(--gold) !important;
+}
+
+.card-bookmark-later-btn.bookmarked svg {
+  fill: var(--gold) !important;
+  stroke: var(--gold) !important;
+  color: var(--gold) !important;
 }
 
 .toast-notification {

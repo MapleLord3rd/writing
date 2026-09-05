@@ -846,7 +846,7 @@
     if (!store[writingId]) store[writingId] = [];
 
     const newComment = {
-      id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
       author: getCurrentUser(),
       text: text.trim(),
       timestamp: new Date().toISOString(),
@@ -967,14 +967,6 @@
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
-  }
-
-  function debounce(fn, delay) {
-    let timer;
-    return function (...args) {
-      clearTimeout(timer);
-      timer = setTimeout(() => fn.apply(this, args), delay);
-    };
   }
 
   // ——— Excerpt / Quote of the Day ———
@@ -1212,14 +1204,14 @@
       `<span class="card-tag" data-tag="${escapeHTML(t)}" title="Filter by #${escapeHTML(t)}">#${escapeHTML(t)}</span>`
     ).join(' ');
 
-    const authorName = getAuthorDisplayName(writing.author);
-    const authorBadge = `<span class="card-author">By ${authorName}</span>`;
+    const isCollab = writing.type === 'collaborative' || isCollaborative(writing.author);
+    const authorName = isCollab ? 'Neerav & Avigna' : getAuthorDisplayName(writing.author);
+    const authorBadge = `<span class="card-author ${isCollab ? 'card-author--collab' : (isAvigna(writing.author) ? 'card-author--avigna' : 'card-author--neerav')}">By ${authorName}</span>`;
 
     const dialogueBadge = writing.inResponseTo
       ? `<span class="card-type" style="background: var(--gold-faint); color: var(--gold); border-color: var(--gold);">💬 Dialogue</span>`
       : '';
 
-    const isFav = isFavorite(writing.id);
     const isSaved = isBookmarked(writing.id);
     const bookmarkBtnHtml = `
       <div class="card-action-btns">
@@ -2649,13 +2641,14 @@
     }
 
     // Author Seal & Signature
-    const authorName = getAuthorDisplayName(writing.author);
-    const authorTitle = isAvigna(writing.author) ? 'The Muse' : 'The Archivist';
+    const isCollab = writing.type === 'collaborative' || isCollaborative(writing.author);
+    const authorName = isCollab ? 'Neerav & Avigna' : getAuthorDisplayName(writing.author);
+    const authorTitle = isCollab ? 'Collaborative Creation' : (isAvigna(writing.author) ? 'The Muse' : 'The Archivist');
 
     // Wax Seal circle
     ctx.beginPath();
     ctx.arc(width / 2, height - 250, 36, 0, Math.PI * 2);
-    ctx.fillStyle = isAvigna(writing.author) ? '#5A46A0' : '#7A2E33';
+    ctx.fillStyle = isCollab ? '#3D2A54' : (isAvigna(writing.author) ? '#5A46A0' : '#7A2E33');
     ctx.fill();
     ctx.strokeStyle = p.gold;
     ctx.lineWidth = 2;
@@ -2663,7 +2656,7 @@
 
     ctx.fillStyle = '#FFF';
     ctx.font = '700 28px "Cormorant Garamond", serif';
-    ctx.fillText(isAvigna(writing.author) ? '✦' : 'N', width / 2, height - 250);
+    ctx.fillText(isCollab ? '✦ ✒' : (isAvigna(writing.author) ? '✦' : 'N'), width / 2, height - 250);
 
     // Signature line
     ctx.font = '500 24px "Cormorant Garamond", Georgia, serif';
@@ -3068,10 +3061,7 @@
   const draftBanner = $('#draftBanner');
   const draftTime = $('#draftTime');
 
-  let currentStep = 1;
-
   function showStep(step) {
-    currentStep = step;
     $$('.form-step').forEach(el => {
       el.classList.toggle('active', parseInt(el.dataset.step) === step);
     });
@@ -3382,7 +3372,7 @@
   // ——— Keyboard Navigation ———
   function initKeyboard() {
     const handleEscapeKey = (e) => {
-      const isEscape = e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27 || e.code === 'Escape';
+      const isEscape = e.key === 'Escape' || e.key === 'Esc' || e.code === 'Escape';
       if (!isEscape) return;
 
       // 1. Emotional Sanctuary Mood Modal (Replicate clicking #moodModalClose)
@@ -3518,7 +3508,7 @@
       }
 
       // 10. Page View Back Navigation (Reading, Writing/Desk, About/Bio, Collections, Detail, Tag, Timeline, Features, Constellation)
-      if (currentPage === 'reading' || currentPage === 'desk' || currentPage === 'about' || currentPage === 'collection-detail' || currentPage === 'tag' || currentPage === 'timeline' || currentPage === 'constellation' || currentPage === 'features') {
+      if (currentPage === 'reading' || currentPage === 'desk' || currentPage === 'about' || currentPage === 'collections' || currentPage === 'collection-detail' || currentPage === 'tag' || currentPage === 'timeline' || currentPage === 'constellation' || currentPage === 'features') {
         e.preventDefault();
         e.stopPropagation();
         const targetPage = (previousPage && previousPage !== currentPage) ? previousPage : 'archive';
@@ -3696,21 +3686,6 @@
         lockScreen.style.opacity = '1';
       }, 500);
       updateUserBadge();
-    }
-
-    function tryUnlock(user) {
-      const entered = (lockPassword ? lockPassword.value : '').trim();
-      if (verifyPassword(user, entered)) {
-        doUnlock(user);
-      } else {
-        lockError.hidden = false;
-        if (lockScreenContent) lockScreenContent.classList.add('shake');
-        if (lockPassword) lockPassword.value = '';
-        if (lockPassword) lockPassword.focus();
-        setTimeout(() => {
-          if (lockScreenContent) lockScreenContent.classList.remove('shake');
-        }, 400);
-      }
     }
 
     // Check if any identity has a password set
@@ -4124,15 +4099,6 @@
       };
     }
 
-    function worldToScreen(wx, wy) {
-      const cx = width / 2;
-      const cy = height / 2;
-      return {
-        x: wx * zoom + cx + panX,
-        y: wy * zoom + cy + panY
-      };
-    }
-
     function findNodeAt(sx, sy) {
       const worldPos = screenToWorld(sx, sy);
       for (let i = nodes.length - 1; i >= 0; i--) {
@@ -4199,7 +4165,7 @@
       }
     }
 
-    function onPointerUp(e) {
+    function onPointerUp() {
       if (isPanning) {
         isPanning = false;
         return;
@@ -4355,7 +4321,6 @@
       const w = node.writing;
       selectedNode = node;
 
-      const isAv = isAvigna(w.author);
       const isCollab = w.type === 'collaborative' || (w.author && w.author.includes('&'));
       const authorName = isCollab ? 'Neerav & Avigna' : getAuthorDisplayName(w.author);
 
@@ -4851,7 +4816,7 @@
 
       // Escape key listener for mood modal
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' || e.keyCode === 27) {
+        if (e.key === 'Escape' || e.key === 'Esc' || e.code === 'Escape') {
           const modal = $('#moodModal');
           if (modal && (!modal.hidden || modal.classList.contains('open'))) {
             closeMoodModal();
