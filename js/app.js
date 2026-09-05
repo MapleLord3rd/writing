@@ -38,13 +38,23 @@
     return user === 'avigna' || user === 'friend';
   }
 
+  function isCollaborative(author) {
+    if (!author) return false;
+    const a = String(author).toLowerCase().trim();
+    return a === 'both' || a === 'collab' || a === 'collaborative' || a === 'neerav & avigna' || a === 'co-authored' || a.includes('&');
+  }
+
   function getAuthorDisplayName(author) {
+    if (isCollaborative(author)) return 'Neerav & Avigna';
     return isAvigna(author) ? 'Avigna' : 'Neerav';
   }
 
   function canUserEdit(writingAuthor) {
     const current = getCurrentUser();
     const author = writingAuthor || 'neerav';
+    if (isCollaborative(author)) {
+      return current === 'neerav' || isAvigna(current);
+    }
     if (isAvigna(author)) {
       return isAvigna(current);
     }
@@ -1077,9 +1087,11 @@
 
   function navigateTo(page, data) {
     const cameFrom = currentPage || 'archive';
+    if (cameFrom !== page) {
+      previousPage = cameFrom;
+    }
     $$('.page').forEach(p => p.classList.remove('active'));
     currentPage = page;
-    previousPage = (page === 'reading') ? cameFrom : page;
 
     // Toggle constellation-mode class on body and programmatically hide footer
     document.body.classList.toggle('constellation-mode', page === 'constellation');
@@ -1517,6 +1529,261 @@
     return { hasDuelMarkers, duelItems };
   }
 
+  // ——— Pass the Pen Collaborative Helper ———
+  function buildPassThePenHtml(writing, duelParse, turns) {
+    const currentUser = getCurrentUser();
+    const isCurAvigna = isAvigna(currentUser);
+    const otherUser = isCurAvigna ? 'neerav' : 'avigna';
+    const currentAuthorName = getAuthorDisplayName(currentUser);
+    const otherAuthorName = getAuthorDisplayName(otherUser);
+
+    let lastAuthor = null;
+    if (duelParse && duelParse.duelItems && duelParse.duelItems.length > 0) {
+      lastAuthor = duelParse.duelItems[duelParse.duelItems.length - 1].author;
+    } else if (turns && turns.length > 0) {
+      lastAuthor = turns[turns.length - 1].author;
+    } else {
+      lastAuthor = writing.author || 'neerav';
+    }
+
+    let isUserTurn = true;
+    if (lastAuthor === 'both') {
+      isUserTurn = true;
+    } else if (isAvigna(lastAuthor)) {
+      isUserTurn = !isCurAvigna;
+    } else {
+      isUserTurn = isCurAvigna;
+    }
+
+    if (!isUserTurn) {
+      return `
+        <div class="pass-the-pen-box pass-the-pen-box--waiting" id="passThePenBox">
+          <div class="pass-the-pen-header">
+            <span class="pass-the-pen-icon">⏳</span>
+            <h3 class="pass-the-pen-title">Pass the Pen — Awaiting ${escapeHTML(otherAuthorName)}</h3>
+          </div>
+          <p class="pass-the-pen-subtitle">
+            You penned the previous stanza. The pen is currently with <strong>${escapeHTML(otherAuthorName)}</strong>.
+          </p>
+          <div class="pass-the-pen-waiting-banner">
+            <div class="waiting-icon-pulse">✒️</div>
+            <div class="waiting-text">
+              <strong>It's ${escapeHTML(otherAuthorName)}'s turn to write next.</strong>
+              <span>To maintain alternating collaborative flow, wait for ${escapeHTML(otherAuthorName)} to add their stanza or switch author profile.</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="pass-the-pen-box pass-the-pen-box--active" id="passThePenBox">
+        <div class="pass-the-pen-header">
+          <span class="pass-the-pen-icon">✒</span>
+          <h3 class="pass-the-pen-title">Pass the Pen — Your Turn to Write!</h3>
+        </div>
+        <p class="pass-the-pen-subtitle">
+          ${escapeHTML(otherAuthorName)} passed the pen to you. You are writing as <strong>${escapeHTML(currentAuthorName)}</strong>.
+        </p>
+        <textarea id="passThePenInput" class="comment-input" style="min-height: 90px;" placeholder="Write the next stanza or verse..."></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px;">
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">Active Pen: <strong>${escapeHTML(currentAuthorName)}</strong></span>
+          <button type="button" class="btn-primary" id="btnSubmitTurn" style="font-size: 0.85rem; padding: 8px 18px;">
+            <span>Append Stanza &amp; Pass Pen</span> <span>&rarr;</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ——— Collaborative Stanza Mutual-Agreement Deletion Engine ———
+  const COLLAB_DELETION_VOTES_KEY = 'archive_collab_delete_votes';
+
+  function getCollabDeletionVotes() {
+    try {
+      const raw = localStorage.getItem(COLLAB_DELETION_VOTES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.warn('Error reading collab deletion votes:', e);
+      return {};
+    }
+  }
+
+  function saveCollabDeletionVotes(votesMap) {
+    try {
+      localStorage.setItem(COLLAB_DELETION_VOTES_KEY, JSON.stringify(votesMap));
+    } catch (e) {
+      console.warn('Error saving collab deletion votes:', e);
+    }
+  }
+
+  function getStanzaVotes(writingId, stanzaIndex) {
+    const allVotes = getCollabDeletionVotes();
+    if (!allVotes[writingId] || !allVotes[writingId][stanzaIndex]) {
+      return [];
+    }
+    return Array.isArray(allVotes[writingId][stanzaIndex]) ? allVotes[writingId][stanzaIndex] : [];
+  }
+
+  function setStanzaVotes(writingId, stanzaIndex, voters) {
+    const allVotes = getCollabDeletionVotes();
+    if (!allVotes[writingId]) allVotes[writingId] = {};
+    if (!voters || voters.length === 0) {
+      delete allVotes[writingId][stanzaIndex];
+      if (Object.keys(allVotes[writingId]).length === 0) {
+        delete allVotes[writingId];
+      }
+    } else {
+      allVotes[writingId][stanzaIndex] = voters;
+    }
+    saveCollabDeletionVotes(allVotes);
+  }
+
+  function shiftStanzaVotesAfterDeletion(writingId, deletedIdx) {
+    const allVotes = getCollabDeletionVotes();
+    if (!allVotes[writingId]) return;
+    const writingVotes = allVotes[writingId];
+    const newWritingVotes = {};
+    Object.keys(writingVotes).forEach(key => {
+      const idx = parseInt(key, 10);
+      if (idx < deletedIdx) {
+        newWritingVotes[idx] = writingVotes[key];
+      } else if (idx > deletedIdx) {
+        newWritingVotes[idx - 1] = writingVotes[key];
+      }
+    });
+    if (Object.keys(newWritingVotes).length > 0) {
+      allVotes[writingId] = newWritingVotes;
+    } else {
+      delete allVotes[writingId];
+    }
+    saveCollabDeletionVotes(allVotes);
+  }
+
+  function buildStanzaDeleteControlsHtml(writingId, stanzaIdx, isCollabOrDuel) {
+    if (!isCollabOrDuel) return '';
+
+    const currentUser = getCurrentUser();
+    const isCurAvigna = isAvigna(currentUser);
+    const otherUser = isCurAvigna ? 'neerav' : 'avigna';
+    const otherAuthorName = getAuthorDisplayName(otherUser);
+
+    const voters = getStanzaVotes(writingId, stanzaIdx);
+    const voteCount = voters.length;
+    const hasUserVoted = voters.includes(currentUser);
+
+    if (voteCount === 0) {
+      return `
+        <button type="button" class="btn-stanza-delete" data-stanza-idx="${stanzaIdx}" data-writing-id="${writingId}" title="Request to delete this stanza (Requires 2/2 mutual agreement)" aria-label="Request deletion of stanza ${stanzaIdx + 1}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span class="btn-stanza-delete-text">Delete</span>
+        </button>
+      `;
+    }
+
+    if (voteCount === 1) {
+      const voter = voters[0];
+      const voterName = getAuthorDisplayName(voter);
+
+      if (hasUserVoted) {
+        return `
+          <div class="stanza-delete-vote-pill stanza-delete-vote-pill--pending" title="1 of 2 authors wish to delete. Waiting for ${escapeHTML(otherAuthorName)}.">
+            <span class="vote-count-label">⏳ 1/2 wish to delete</span>
+            <button type="button" class="btn-stanza-cancel-vote" data-stanza-idx="${stanzaIdx}" data-writing-id="${writingId}" title="Withdraw your deletion request">
+              Withdraw
+            </button>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="stanza-delete-vote-pill stanza-delete-vote-pill--actionable" title="${escapeHTML(voterName)} requested deletion. Agree to remove (2/2).">
+            <span class="vote-count-label vote-count-label--pulse">⚠️ 1/2 wish to delete</span>
+            <button type="button" class="btn-stanza-confirm-vote" data-stanza-idx="${stanzaIdx}" data-writing-id="${writingId}" title="Agree to delete stanza (2/2 - permanently removes addition)">
+              ✓ Agree (2/2)
+            </button>
+            <button type="button" class="btn-stanza-reject-vote" data-stanza-idx="${stanzaIdx}" data-writing-id="${writingId}" title="Decline deletion and keep stanza">
+              ✕ Keep
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    return '';
+  }
+
+  function buildStanzaPendingBannerHtml(writingId, stanzaIdx, isCollabOrDuel) {
+    if (!isCollabOrDuel) return '';
+    const voters = getStanzaVotes(writingId, stanzaIdx);
+    if (voters.length !== 1) return '';
+
+    const currentUser = getCurrentUser();
+    const isCurAvigna = isAvigna(currentUser);
+    const otherUser = isCurAvigna ? 'neerav' : 'avigna';
+    const otherAuthorName = getAuthorDisplayName(otherUser);
+    const voter = voters[0];
+    const voterName = getAuthorDisplayName(voter);
+    const hasUserVoted = voters.includes(currentUser);
+
+    return `
+      <div class="stanza-pending-delete-banner">
+        <span class="pending-delete-icon">⚖️</span>
+        <div class="pending-delete-info">
+          <span class="pending-delete-title">Deletion Proposal (1/2 Agreed)</span>
+          <span class="pending-delete-desc">
+            ${hasUserVoted
+              ? `You requested to delete this addition. Waiting for <strong>${escapeHTML(otherAuthorName)}</strong> to agree (2/2).`
+              : `<strong>${escapeHTML(voterName)}</strong> requested to delete this addition. Click &ldquo;Agree (2/2)&rdquo; to delete, or &ldquo;Keep&rdquo; to decline.`}
+          </span>
+        </div>
+      </div>
+    `;
+  }
+
+  async function executeDeleteCollabStanza(writingId, stanzaIdx) {
+    const writing = getWritings().find(w => w.id === writingId);
+    if (!writing) return;
+
+    const duelParse = parseStanzaDuel(writing.content, writing.author);
+    let updatedContent = '';
+
+    if (duelParse.duelItems && duelParse.duelItems.length > 0) {
+      const items = duelParse.duelItems.slice();
+      if (stanzaIdx >= 0 && stanzaIdx < items.length) {
+        items.splice(stanzaIdx, 1);
+      }
+      if (items.length === 0) {
+        updatedContent = '';
+      } else {
+        updatedContent = items.map(it => {
+          const authName = getAuthorDisplayName(it.author);
+          return `${authName}:\n${it.text}`;
+        }).join('\n\n');
+      }
+    } else {
+      const rawBlocks = (writing.content || '').trim().split(/\n\n+/);
+      if (stanzaIdx >= 0 && stanzaIdx < rawBlocks.length) {
+        rawBlocks.splice(stanzaIdx, 1);
+      }
+      updatedContent = rawBlocks.join('\n\n');
+    }
+
+    shiftStanzaVotesAfterDeletion(writingId, stanzaIdx);
+
+    try {
+      await updateWriting(writingId, { ...writing, content: updatedContent });
+      showToast('Stanza deleted by mutual agreement (2/2) 🗑️');
+      if (typeof playChime === 'function') playChime();
+      renderReading(writingId);
+    } catch (err) {
+      console.error('Error executing collaborative stanza deletion:', err);
+      showToast('Error deleting stanza. Please try again.');
+    }
+  }
+
   function renderReading(writingId) {
     currentReadingId = writingId;
     const allWritings = getWritings();
@@ -1539,6 +1806,8 @@
       btnBookmark.classList.toggle('favorited', isFav);
       const textSpan = btnBookmark.querySelector('.admin-btn-text');
       if (textSpan) textSpan.textContent = isFav ? 'Favorited' : 'Favorite';
+      const svg = btnBookmark.querySelector('svg');
+      if (svg) svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
     }
 
     // Update read later button state
@@ -1548,6 +1817,8 @@
       btnReadLater.classList.toggle('bookmarked', isSaved);
       const textSpan = btnReadLater.querySelector('.admin-btn-text');
       if (textSpan) textSpan.textContent = isSaved ? 'Bookmarked' : 'Bookmark';
+      const svg = btnReadLater.querySelector('svg');
+      if (svg) svg.setAttribute('fill', isSaved ? 'currentColor' : 'none');
     }
 
     const isPoem = writing.type === 'poem';
@@ -1571,6 +1842,8 @@
         const emblem = isBoth ? '✦ ✒' : (isAv ? '✦' : 'N');
         const modifierClass = isBoth ? 'stanza-card--both' : (isAv ? 'stanza-card--avigna' : 'stanza-card--neerav');
         const formattedText = item.text.split('\n').map(line => escapeHTML(line)).join('<br>');
+        const deleteControlsHtml = isCollab ? buildStanzaDeleteControlsHtml(writing.id, idx, true) : '';
+        const pendingBannerHtml = isCollab ? buildStanzaPendingBannerHtml(writing.id, idx, true) : '';
 
         return `
           <div class="stanza-duel-card ${modifierClass}" data-stanza-index="${idx}">
@@ -1579,9 +1852,13 @@
                 <span class="stanza-emblem">${emblem}</span>
                 <span class="stanza-author-name">${authorDisplayName}</span>
               </div>
-              <span class="stanza-number">Stanza ${idx + 1}</span>
+              <div class="stanza-header-actions">
+                <span class="stanza-number">Stanza ${idx + 1}</span>
+                ${deleteControlsHtml}
+              </div>
             </div>
             <div class="stanza-duel-text">${formattedText}</div>
+            ${pendingBannerHtml}
             <div class="stanza-connector-thread" aria-hidden="true"></div>
           </div>
         `;
@@ -1599,22 +1876,7 @@
       `;
 
       if (isCollab) {
-        const currentAuthorName = getAuthorDisplayName(getCurrentUser());
-        collabPassThePenHtml = `
-          <div class="pass-the-pen-box" id="passThePenBox">
-            <div class="pass-the-pen-header">
-              <span class="pass-the-pen-icon">✒</span>
-              <h3 class="pass-the-pen-title">Pass the Pen — Add Next Stanza / Turn</h3>
-            </div>
-            <p class="pass-the-pen-subtitle">You are writing as <strong>${escapeHTML(currentAuthorName)}</strong></p>
-            <textarea id="passThePenInput" class="comment-input" style="min-height: 85px;" placeholder="Write the next verse or turn..."></textarea>
-            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-              <button type="button" class="btn-primary" id="btnSubmitTurn" style="font-size: 0.85rem; padding: 8px 18px;">
-                <span>Append Turn</span> <span>&rarr;</span>
-              </button>
-            </div>
-          </div>
-        `;
+        collabPassThePenHtml = buildPassThePenHtml(writing, duelParse, null);
       }
     } else if (isCollab) {
       const rawBlocks = (writing.content || '').trim().split(/\n\n+/);
@@ -1632,18 +1894,27 @@
         }
       });
 
-      const turnsRendered = turns.map(t => {
+      const turnsRendered = turns.map((t, idx) => {
         const isAv = isAvigna(t.author);
         const name = getAuthorDisplayName(t.author);
         const letter = isAv ? '✦' : 'N';
         const modifierClass = isAv ? 'collab-turn-block--avigna' : 'collab-turn-block--neerav';
+        const deleteControlsHtml = buildStanzaDeleteControlsHtml(writing.id, idx, true);
+        const pendingBannerHtml = buildStanzaPendingBannerHtml(writing.id, idx, true);
         return `
-          <div class="collab-turn-block ${modifierClass}">
+          <div class="collab-turn-block ${modifierClass}" data-stanza-index="${idx}">
             <div class="collab-turn-header">
-              <div class="collab-turn-avatar">${letter}</div>
-              <span class="collab-turn-author">${name}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="collab-turn-avatar">${letter}</div>
+                <span class="collab-turn-author">${name}</span>
+              </div>
+              <div class="stanza-header-actions">
+                <span class="stanza-number">Turn ${idx + 1}</span>
+                ${deleteControlsHtml}
+              </div>
             </div>
             <div class="collab-turn-text">${escapeHTML(t.text)}</div>
+            ${pendingBannerHtml}
           </div>
         `;
       }).join('');
@@ -1654,22 +1925,7 @@
         </div>
       `;
 
-      const currentAuthorName = getAuthorDisplayName(getCurrentUser());
-      collabPassThePenHtml = `
-        <div class="pass-the-pen-box" id="passThePenBox">
-          <div class="pass-the-pen-header">
-            <span class="pass-the-pen-icon">✒</span>
-            <h3 class="pass-the-pen-title">Pass the Pen — Add Next Turn</h3>
-          </div>
-          <p class="pass-the-pen-subtitle">You are writing as <strong>${escapeHTML(currentAuthorName)}</strong></p>
-          <textarea id="passThePenInput" class="comment-input" style="min-height: 85px;" placeholder="Write what happens next in the story..."></textarea>
-          <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-            <button type="button" class="btn-primary" id="btnSubmitTurn" style="font-size: 0.85rem; padding: 8px 18px;">
-              <span>Append Turn</span> <span>&rarr;</span>
-            </button>
-          </div>
-        </div>
-      `;
+      collabPassThePenHtml = buildPassThePenHtml(writing, null, turns);
     } else if (isPoem) {
       const stanzas = (writing.content || '').trim().split(/\n\n+/);
       bodyHtml = stanzas.map(s =>
@@ -1740,12 +1996,13 @@
 
     // Author Signature Wax Seal
     const authorName = getAuthorDisplayName(writing.author);
-    const sealClass = isAvigna(writing.author) ? 'wax-seal--avigna' : 'wax-seal--neerav';
-    const sealEmblem = isAvigna(writing.author) ? '✦' : 'N';
-    const sealSignature = isCollab
+    const isCollabAuthor = isCollaborative(writing.author) || isCollab;
+    const sealClass = isCollabAuthor ? 'wax-seal--collab' : (isAvigna(writing.author) ? 'wax-seal--avigna' : 'wax-seal--neerav');
+    const sealEmblem = isCollabAuthor ? '✦ ✒' : (isAvigna(writing.author) ? '✦' : 'N');
+    const sealSignature = isCollabAuthor
       ? 'Written together by Neerav & Avigna'
       : (isAvigna(writing.author) ? 'Written with heart by Avigna' : 'Written with care by Neerav');
-    const sealSubtitle = isCollab
+    const sealSubtitle = isCollabAuthor
       ? 'A Collaborative Creation · The Archive'
       : (isAvigna(writing.author) ? 'The Muse · The Archive' : 'The Archivist · The Archive');
 
@@ -2004,6 +2261,80 @@
           deleteComment(writingId, commentId);
           renderReading(writingId);
         }
+      });
+    });
+
+    // Collaborative Stanza Deletion Mutual Agreement Listeners
+    readingContent.querySelectorAll('.btn-stanza-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const stanzaIdx = parseInt(btn.dataset.stanzaIdx, 10);
+        const targetWritingId = btn.dataset.writingId;
+        const currentUser = getCurrentUser();
+        const isCurAvigna = isAvigna(currentUser);
+        const otherUser = isCurAvigna ? 'neerav' : 'avigna';
+        const otherAuthorName = getAuthorDisplayName(otherUser);
+
+        let voters = getStanzaVotes(targetWritingId, stanzaIdx);
+        if (!voters.includes(currentUser)) {
+          voters.push(currentUser);
+        }
+
+        if (voters.length >= 2) {
+          await executeDeleteCollabStanza(targetWritingId, stanzaIdx);
+        } else {
+          setStanzaVotes(targetWritingId, stanzaIdx, voters);
+          showToast(`Deletion proposed (1/2 agreed). Waiting for ${otherAuthorName}'s agreement. ⏳`);
+          renderReading(targetWritingId);
+        }
+      });
+    });
+
+    readingContent.querySelectorAll('.btn-stanza-confirm-vote').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const stanzaIdx = parseInt(btn.dataset.stanzaIdx, 10);
+        const targetWritingId = btn.dataset.writingId;
+        const currentUser = getCurrentUser();
+
+        let voters = getStanzaVotes(targetWritingId, stanzaIdx);
+        if (!voters.includes(currentUser)) {
+          voters.push(currentUser);
+        }
+
+        if (voters.length >= 2) {
+          await executeDeleteCollabStanza(targetWritingId, stanzaIdx);
+        } else {
+          setStanzaVotes(targetWritingId, stanzaIdx, voters);
+          renderReading(targetWritingId);
+        }
+      });
+    });
+
+    readingContent.querySelectorAll('.btn-stanza-cancel-vote').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const stanzaIdx = parseInt(btn.dataset.stanzaIdx, 10);
+        const targetWritingId = btn.dataset.writingId;
+        const currentUser = getCurrentUser();
+
+        let voters = getStanzaVotes(targetWritingId, stanzaIdx);
+        voters = voters.filter(v => v !== currentUser);
+        setStanzaVotes(targetWritingId, stanzaIdx, voters);
+        showToast('Deletion request withdrawn.');
+        renderReading(targetWritingId);
+      });
+    });
+
+    readingContent.querySelectorAll('.btn-stanza-reject-vote').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const stanzaIdx = parseInt(btn.dataset.stanzaIdx, 10);
+        const targetWritingId = btn.dataset.writingId;
+
+        setStanzaVotes(targetWritingId, stanzaIdx, []);
+        showToast('Deletion proposal declined. Stanza kept. ✨');
+        renderReading(targetWritingId);
       });
     });
 
@@ -2761,7 +3092,7 @@
       modalTitle.textContent = 'Edit Writing';
       editingIdInput.value = writing.id;
       formTitle.value = writing.title || '';
-      formAuthor.value = isAvigna(writing.author) ? 'avigna' : 'neerav';
+      formAuthor.value = isCollaborative(writing.author) ? 'both' : (isAvigna(writing.author) ? 'avigna' : 'neerav');
       formType.value = writing.type || 'poem';
       formDate.value = writing.date || new Date().toISOString().split('T')[0];
       formExcerpt.value = writing.excerpt || '';
@@ -2851,24 +3182,6 @@
 
     $('#btnPrevStep2')?.addEventListener('click', () => showStep(1));
 
-    // Stanza Duel Helper Buttons for Collaborative & Verse Creation
-    function insertStanzaTag(tag) {
-      if (!formContent) return;
-      const start = formContent.selectionStart || 0;
-      const end = formContent.selectionEnd || 0;
-      const val = formContent.value;
-      const prefix = (start > 0 && val[start - 1] !== '\n') ? '\n\n' : '';
-      const insert = prefix + tag + '\n';
-      formContent.value = val.substring(0, start) + insert + val.substring(end);
-      formContent.focus();
-      const newPos = start + insert.length;
-      formContent.setSelectionRange(newPos, newPos);
-    }
-
-    $('#btnInsertNeeravStanza')?.addEventListener('click', () => insertStanzaTag('[Neerav]'));
-    $('#btnInsertAvignaStanza')?.addEventListener('click', () => insertStanzaTag('[Avigna]'));
-    $('#btnInsertBothStanza')?.addEventListener('click', () => insertStanzaTag('[Both]'));
-
     $('#btnNextStep2')?.addEventListener('click', () => {
       if (!formContent.value.trim()) { formContent.reportValidity(); return; }
       showStep(3);
@@ -2896,7 +3209,7 @@
 
       const title = formTitle.value.trim();
       const rawAuthor = formAuthor.value || getCurrentUser();
-      const author = isAvigna(rawAuthor) ? 'avigna' : 'neerav';
+      const author = isCollaborative(rawAuthor) ? 'both' : (isAvigna(rawAuthor) ? 'avigna' : 'neerav');
       localStorage.setItem('last-author', author);
       const type = formType.value;
       const date = formDate.value;
@@ -2966,6 +3279,8 @@
         btn.classList.toggle('bookmarked', nowSaved);
         const textSpan = btn.querySelector('.admin-btn-text');
         if (textSpan) textSpan.textContent = nowSaved ? 'Bookmarked' : 'Bookmark';
+        const svg = btn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', nowSaved ? 'currentColor' : 'none');
       }
     });
 
@@ -2978,6 +3293,8 @@
         btn.classList.toggle('favorited', nowFav);
         const textSpan = btn.querySelector('.admin-btn-text');
         if (textSpan) textSpan.textContent = nowFav ? 'Favorited' : 'Favorite';
+        const svg = btn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', nowFav ? 'currentColor' : 'none');
       }
     });
 
@@ -3058,7 +3375,7 @@
 
       // 1. Emotional Sanctuary Mood Modal (Replicate clicking #moodModalClose)
       const moodModal = document.getElementById('moodModal');
-      if (moodModal && (!moodModal.hidden || moodModal.classList.contains('open') || window.getComputedStyle(moodModal).display !== 'none')) {
+      if (moodModal && !moodModal.hidden) {
         e.preventDefault();
         e.stopPropagation();
         const moodCloseBtn = document.getElementById('moodModalClose');
@@ -3068,13 +3385,14 @@
           MoodCompanionManager.closeMoodModal();
         } else {
           moodModal.hidden = true;
+          moodModal.classList.remove('open');
         }
         return;
       }
 
       // 2. Floating Mood Companion Card (Replicate clicking #btnMoodCardClose)
       const moodCard = document.getElementById('moodCompanionCard');
-      if (moodCard && !moodCard.hidden && (moodCard.classList.contains('visible') || window.getComputedStyle(moodCard).opacity !== '0')) {
+      if (moodCard && !moodCard.hidden && (moodCard.classList.contains('visible') || moodCard.classList.contains('open') || window.getComputedStyle(moodCard).opacity !== '0')) {
         e.preventDefault();
         e.stopPropagation();
         const cardCloseBtn = document.getElementById('btnMoodCardClose') || document.getElementById('moodCompanionClose');
@@ -3084,13 +3402,14 @@
           MoodCompanionManager.dismissCompanionCard();
         } else {
           moodCard.hidden = true;
+          moodCard.classList.remove('visible');
         }
         return;
       }
 
       // 3. Constellation Star Inspector Drawer (Replicate clicking #btnConstellationInspectorClose)
       const inspector = document.getElementById('constellationInspector');
-      if (inspector && (!inspector.hidden || inspector.classList.contains('open') || window.getComputedStyle(inspector).display !== 'none')) {
+      if (inspector && !inspector.hidden && inspector.classList.contains('open')) {
         e.preventDefault();
         e.stopPropagation();
         const inspectorCloseBtn = document.getElementById('btnConstellationInspectorClose') || document.getElementById('constellationInspectorClose');
@@ -3105,7 +3424,7 @@
 
       // 4. Distraction-Free Zen Fullscreen Mode (Replicate clicking #btnExitZen)
       const zenOverlay = document.getElementById('zenOverlay');
-      if (zenOverlay && !zenOverlay.hidden && window.getComputedStyle(zenOverlay).display !== 'none') {
+      if (zenOverlay && !zenOverlay.hidden) {
         e.preventDefault();
         e.stopPropagation();
         const exitZenBtn = document.getElementById('btnExitZen');
@@ -3117,9 +3436,25 @@
         return;
       }
 
-      // 5. Admin / Writing Modal (Replicate clicking #modalClose)
+      // 5. Mode or Ambient Popovers
+      const modePopover = document.getElementById('modePopover');
+      if (modePopover && !modePopover.hidden) {
+        e.preventDefault();
+        e.stopPropagation();
+        modePopover.hidden = true;
+        return;
+      }
+      const ambientPopover = document.getElementById('ambientPopover');
+      if (ambientPopover && !ambientPopover.hidden) {
+        e.preventDefault();
+        e.stopPropagation();
+        ambientPopover.hidden = true;
+        return;
+      }
+
+      // 6. Admin / Writing Modal Screen (Replicate clicking #modalClose)
       const adminModal = document.getElementById('adminModal');
-      if (adminModal && (!adminModal.hidden || window.getComputedStyle(adminModal).display !== 'none')) {
+      if (adminModal && !adminModal.hidden) {
         e.preventDefault();
         e.stopPropagation();
         const adminCloseBtn = document.getElementById('modalClose');
@@ -3131,9 +3466,9 @@
         return;
       }
 
-      // 6. Postcard Modal (Replicate clicking #postcardClose)
+      // 7. Postcard Modal Screen (Replicate clicking #postcardClose)
       const postcardModal = document.getElementById('postcardModal');
-      if (postcardModal && (!postcardModal.hidden || window.getComputedStyle(postcardModal).display !== 'none')) {
+      if (postcardModal && !postcardModal.hidden) {
         e.preventDefault();
         e.stopPropagation();
         const postcardCloseBtn = document.getElementById('postcardClose');
@@ -3145,9 +3480,9 @@
         return;
       }
 
-      // 7. Profile Modal (Replicate clicking #profileModalClose)
+      // 8. Profile / Bio Modal Screen (Replicate clicking #profileModalClose)
       const profileModal = document.getElementById('profileModal');
-      if (profileModal && (!profileModal.hidden || window.getComputedStyle(profileModal).display !== 'none')) {
+      if (profileModal && !profileModal.hidden) {
         e.preventDefault();
         e.stopPropagation();
         const profileCloseBtn = document.getElementById('profileModalClose');
@@ -3159,7 +3494,7 @@
         return;
       }
 
-      // 8. Mobile Navigation Drawer
+      // 9. Mobile Navigation Drawer
       if (navToggle && navLinks && (navToggle.classList.contains('open') || navLinks.classList.contains('open'))) {
         e.preventDefault();
         e.stopPropagation();
@@ -3170,12 +3505,12 @@
         return;
       }
 
-      // 9. Reading View back navigation
-      const readingPage = document.getElementById('page-reading');
-      if (readingPage && !readingPage.hidden && window.getComputedStyle(readingPage).display !== 'none') {
+      // 10. Page View Back Navigation (Reading, Writing/Desk, About/Bio, Collections, Detail, Tag, Timeline, Features, Constellation)
+      if (currentPage === 'reading' || currentPage === 'desk' || currentPage === 'about' || currentPage === 'collection-detail' || currentPage === 'tag' || currentPage === 'timeline' || currentPage === 'constellation' || currentPage === 'features') {
         e.preventDefault();
         e.stopPropagation();
-        navigateTo(previousPage || 'archive');
+        const targetPage = (previousPage && previousPage !== currentPage) ? previousPage : 'archive';
+        navigateTo(targetPage);
         return;
       }
     };
@@ -3183,6 +3518,82 @@
     // Capture phase on both window and document to guarantee intercepting before child controls stop propagation
     window.addEventListener('keydown', handleEscapeKey, { capture: true });
     document.addEventListener('keydown', handleEscapeKey, { capture: true });
+
+    // Helper: query visible, interactive elements in the navigation bar
+    function getNavInteractiveElements() {
+      const nav = document.getElementById('nav');
+      if (!nav) return [];
+      return Array.from(nav.querySelectorAll('.nav-logo, .nav-link, #btnNavMood, #ambientToggleBtn, #btnModeSelector, #btnNavSurprise, #navUserBadge, #lockArchiveBtn'))
+        .filter(el => {
+          if (!el || el.hidden) return false;
+          if (el.offsetParent === null && window.getComputedStyle(el).position !== 'fixed') return false;
+          const style = window.getComputedStyle(el);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+    }
+
+    // Keyboard-only navigation for the Navigation Bar
+    document.addEventListener('keydown', (e) => {
+      const activeEl = document.activeElement;
+      const isInsideInput = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable
+      );
+
+      // Alt+N or 'N' (when not in a text input or active modal) jumps focus directly to the navbar
+      const isNavShortcut = (e.altKey && (e.key === 'n' || e.key === 'N')) ||
+                            (!isInsideInput && !e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'n' || e.key === 'N'));
+
+      if (isNavShortcut) {
+        const navItems = getNavInteractiveElements();
+        if (navItems.length > 0) {
+          e.preventDefault();
+          const activeNav = navItems.find(item => item.classList.contains('active')) || navItems[0];
+          activeNav.focus();
+          return;
+        }
+      }
+
+      // When keyboard focus is inside the navbar, handle Arrow keys, Home, End, Enter, Space, Escape
+      const nav = document.getElementById('nav');
+      if (nav && (nav.contains(activeEl) || activeEl.closest('#nav'))) {
+        const navItems = getNavInteractiveElements();
+        const currentIndex = navItems.indexOf(activeEl);
+
+        if (currentIndex !== -1) {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = (currentIndex + 1) % navItems.length;
+            navItems[nextIndex].focus();
+          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = (currentIndex - 1 + navItems.length) % navItems.length;
+            navItems[prevIndex].focus();
+          } else if (e.key === 'Home') {
+            e.preventDefault();
+            navItems[0].focus();
+          } else if (e.key === 'End') {
+            e.preventDefault();
+            navItems[navItems.length - 1].focus();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            activeEl.blur();
+            const mainContent = document.getElementById('page-' + currentPage) || document.body;
+            mainContent.focus();
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            if (activeEl.dataset && activeEl.dataset.nav) {
+              e.preventDefault();
+              navigateTo(activeEl.dataset.nav);
+            } else if (typeof activeEl.click === 'function') {
+              e.preventDefault();
+              activeEl.click();
+            }
+          }
+        }
+      }
+    });
   }
 
   // ——— User-Set Password Lock (one per identity, saved in localStorage) ———

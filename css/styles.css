@@ -1289,6 +1289,7 @@ input, select {
   gap: var(--sp-sm);
   margin-bottom: var(--sp-md);
   flex-wrap: wrap;
+  padding-right: 48px;
 }
 
 .card-type {
@@ -2607,6 +2608,38 @@ body.nav-open {
     max-width: calc(100vw - 24px);
   }
 
+  /* Responsive Reading Top Tools Bar on Mobile */
+  .page--reading {
+    position: relative;
+  }
+
+  .admin-tools {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    margin: var(--sp-md) auto var(--sp-sm);
+    padding: 4px 8px;
+    max-width: var(--container-reading);
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    box-sizing: border-box;
+  }
+
+  .admin-tools::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-tool-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
   /* About & Timeline Mobile */
   .about-detail {
     flex-direction: column;
@@ -2645,7 +2678,7 @@ body.nav-open {
     align-items: center;
   }
 
-  .modal-content {
+  .modal:not(#adminModal) .modal-content {
     width: calc(100vw - 20px);
     max-height: calc(100dvh - 20px);
     border-radius: var(--radius-lg);
@@ -2683,6 +2716,181 @@ body.nav-open {
     width: 100%;
     min-height: 44px;
     justify-content: center;
+  }
+
+  /* Full-Screen Dedicated Mobile Writing Studio (#adminModal) */
+  #adminModal.modal {
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    width: 100vw !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    z-index: 2100 !important;
+  }
+
+  #adminModal .modal-overlay {
+    display: none !important;
+  }
+
+  #adminModal .modal-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #0d0d14 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    animation: none !important;
+  }
+
+  #adminModal .modal-header {
+    padding: 12px 16px !important;
+    background: rgba(18, 18, 26, 0.98) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  #adminModal .modal-title {
+    font-size: 1.15rem !important;
+  }
+
+  #adminModal .modal-form {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    gap: 0 !important;
+  }
+
+  #adminModal .form-step {
+    flex: 1 !important;
+    display: none;
+    flex-direction: column !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  #adminModal .form-step.active {
+    display: flex !important;
+  }
+
+  /* Step 2 Mobile Zen Writing Studio */
+  #adminModal .form-step[data-step="2"] {
+    padding: 12px 16px !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #adminModal .form-step[data-step="2"] .form-group {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+
+  #adminModal .form-header-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 8px !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  #adminModal .form-header-row .form-label {
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+  }
+
+  #adminModal .form-header-tools {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  #adminModal .form-hint-pill {
+    display: none !important;
+  }
+
+  #adminModal .form-word-counter {
+    font-family: var(--font-mono) !important;
+    font-size: 0.76rem !important;
+    color: var(--text-muted) !important;
+  }
+
+  #adminModal .btn-zen-toggle {
+    font-size: 0.76rem !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+  }
+
+  #adminModal .form-textarea-large {
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 280px !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-family: var(--font-serif) !important;
+    font-size: 1.22rem !important;
+    line-height: 1.85 !important;
+    color: #FFFFFF !important;
+    caret-color: #E68A90 !important;
+    padding: 8px 0 !important;
+    resize: none !important;
+    box-sizing: border-box !important;
+  }
+
+  #adminModal #contentSubHint {
+    display: none !important;
+  }
+
+  #adminModal .form-actions {
+    margin-top: auto !important;
+    padding: 12px 16px !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    background: rgba(18, 18, 26, 0.98) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #adminModal .form-actions .btn,
+  #adminModal .form-actions .btn-primary,
+  #adminModal .form-actions .btn-secondary {
+    flex: 1 !important;
+    width: auto !important;
+    min-height: 46px !important;
+    font-size: 0.88rem !important;
+    padding: 10px 14px !important;
+    justify-content: center !important;
+    text-align: center !important;
   }
 
   /* Comments & Collaboration on Mobile */
@@ -2727,7 +2935,19 @@ body.nav-open {
     justify-content: space-between;
   }
 
-  .modal-content {
+  .admin-tools {
+    gap: 4px;
+    padding: 2px 4px;
+    margin: var(--sp-sm) auto var(--sp-xs);
+  }
+
+  .admin-tool-btn {
+    padding: 5px 8px;
+    font-size: 0.7rem;
+    gap: 4px;
+  }
+
+  .modal:not(#adminModal) .modal-content {
     padding: 16px 14px !important;
     border-radius: 16px !important;
     width: min(100vw - 16px, 480px) !important;
@@ -2772,6 +2992,20 @@ body.nav-open {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.nav-link:focus-visible,
+.nav-logo:focus-visible,
+.nav-mood-btn:focus-visible,
+.ambient-toggle-btn:focus-visible,
+.mode-toggle-btn:focus-visible,
+.nav-surprise-btn:focus-visible,
+.user-profile-badge:focus-visible,
+#lockArchiveBtn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+  color: var(--gold) !important;
 }
 
 /* ---------- Reduced Motion ---------- */
@@ -3285,6 +3519,19 @@ select.form-input option {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-faint);
+}
+
+.admin-tool-btn.bookmarked,
+.admin-tool-btn.favorited {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: var(--gold-faint);
+}
+
+.admin-tool-btn.bookmarked svg,
+.admin-tool-btn.favorited svg {
+  fill: var(--gold);
+  color: var(--gold);
 }
 
 /* Data tools */
@@ -3951,7 +4198,7 @@ select.form-input option {
   border: none;
   color: var(--text-muted);
   cursor: var(--cursor-pointer);
-  padding: 6px;
+  padding: 10px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -4164,6 +4411,20 @@ select.form-input option {
   font-size: 1.4rem;
   color: #FFF2CC;
   text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+/* Collaborative Seal (Dual Archivist & Muse Wax) */
+.wax-seal--collab {
+  background: radial-gradient(circle at 35% 35%, #C89B3C, #7A2E33 55%, #3D2B7A);
+  box-shadow: 0 4px 16px rgba(200, 155, 60, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(248, 227, 195, 0.5);
+}
+
+.wax-seal--collab .wax-emblem {
+  font-size: 1.25rem;
+  color: #FFF2CC;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  letter-spacing: 2px;
 }
 
 .author-seal-signature {
@@ -5125,6 +5386,62 @@ select.form-input option {
   margin-bottom: var(--sp-md);
 }
 
+.pass-the-pen-box--waiting {
+  background: linear-gradient(135deg, rgba(230, 197, 148, 0.05) 0%, rgba(20, 20, 30, 0.95) 100%);
+  border: 1.5px dashed rgba(230, 197, 148, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.pass-the-pen-box--active {
+  background: linear-gradient(135deg, rgba(230, 138, 144, 0.06) 0%, rgba(20, 20, 30, 0.95) 100%);
+  border: 1.5px dashed rgba(230, 138, 144, 0.4);
+}
+
+.pass-the-pen-waiting-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(230, 197, 148, 0.08);
+  border: 1px solid rgba(230, 197, 148, 0.22);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 18px;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.waiting-icon-pulse {
+  font-size: 1.8rem;
+  line-height: 1;
+  animation: waitingPulse 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes waitingPulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.18) rotate(-8deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(230, 197, 148, 0.5));
+  }
+}
+
+.waiting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.waiting-text strong {
+  color: var(--gold, #E6C594);
+  font-size: 0.92rem;
+}
+
 /* ============================================================
    SURPRISE ME & BOOKMARKS
    ============================================================ */
@@ -5173,10 +5490,18 @@ select.form-input option {
   color: var(--accent);
 }
 
-.card-bookmark-later-btn {
+.card-action-btns {
   position: absolute;
   top: 14px;
-  right: 50px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+}
+
+.card-bookmark-later-btn {
+  position: static;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -5187,7 +5512,6 @@ select.form-input option {
   align-items: center;
   justify-content: center;
   transition: all var(--duration-fast);
-  z-index: 5;
 }
 
 .card-bookmark-later-btn:hover {
@@ -5823,12 +6147,14 @@ body:has(#page-constellation.active) .footer {
   box-sizing: border-box;
 }
 
-.constellation-card-inspector[hidden],
+.constellation-card-inspector[hidden] {
+  display: none !important;
+}
+
 .constellation-card-inspector:not(.open) {
   transform: translateX(calc(100% + 40px));
   opacity: 0;
   pointer-events: none;
-  display: flex !important;
 }
 
 /* Inspector Header */
@@ -6819,11 +7145,196 @@ body:has(#page-constellation.active) .footer {
   border: 1px solid rgba(230, 197, 148, 0.3);
 }
 
-.stanza-header {
+.stanza-header,
+.stanza-duel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--sp-md);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stanza-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stanza-number {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Stanza Delete Button (Top Right of Stanza) */
+.btn-stanza-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(224, 83, 104, 0.08);
+  border: 1px solid rgba(224, 83, 104, 0.22);
+  color: #E05368;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  line-height: 1.2;
+}
+
+.btn-stanza-delete:hover {
+  background: rgba(224, 83, 104, 0.2);
+  border-color: rgba(224, 83, 104, 0.5);
+  color: #ff6b81;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(224, 83, 104, 0.2);
+}
+
+.btn-stanza-delete svg {
+  stroke-width: 2.2;
+  transition: transform var(--duration-fast);
+}
+
+.btn-stanza-delete:hover svg {
+  transform: scale(1.1);
+}
+
+/* 1/2 Consensus Voting Pill in Header */
+.stanza-delete-vote-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  transition: all var(--duration-fast);
+}
+
+.stanza-delete-vote-pill--pending {
+  background: rgba(230, 197, 148, 0.12);
+  border: 1px solid rgba(230, 197, 148, 0.4);
+}
+
+.stanza-delete-vote-pill--actionable {
+  background: rgba(224, 83, 104, 0.12);
+  border: 1px solid rgba(224, 83, 104, 0.38);
+}
+
+.vote-count-label {
+  color: var(--gold, #E6C594);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vote-count-label--pulse {
+  color: #ff6b81;
+  animation: pulseVote 2s infinite ease-in-out;
+}
+
+@keyframes pulseVote {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.97); }
+}
+
+.btn-stanza-cancel-vote,
+.btn-stanza-confirm-vote,
+.btn-stanza-reject-vote {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  transition: all var(--duration-fast);
+}
+
+.btn-stanza-cancel-vote {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btn-stanza-cancel-vote:hover {
+  color: var(--text);
+}
+
+.btn-stanza-confirm-vote {
+  background: #E05368;
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+.btn-stanza-confirm-vote:hover {
+  background: #c93d52;
+  box-shadow: 0 2px 6px rgba(224, 83, 104, 0.35);
+}
+
+.btn-stanza-reject-vote {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.btn-stanza-reject-vote:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text);
+}
+
+/* Stanza Pending Deletion Banner Inside Card */
+.stanza-pending-delete-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(230, 197, 148, 0.08) 0%, rgba(224, 83, 104, 0.08) 100%);
+  border: 1px dashed rgba(230, 197, 148, 0.4);
+  border-radius: var(--radius-md);
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.pending-delete-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pending-delete-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pending-delete-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold, #E6C594);
+}
+
+.pending-delete-desc {
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pending-delete-desc strong {
+  color: var(--text);
 }
 
 .stanza-author-badge {

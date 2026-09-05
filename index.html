@@ -435,6 +435,47 @@
 
   <!-- ==================== READING PAGE ==================== -->
   <section class="page page--reading" id="page-reading">
+    <!-- Admin Tools (in reading page) -->
+    <div class="admin-tools" id="adminTools" hidden>
+      <button class="admin-tool-btn" id="btnReadLaterReading" title="Save for Later / Bookmark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="admin-btn-text">Bookmark</span>
+      </button>
+      <button class="admin-tool-btn" id="btnBookmarkReading" title="Favorite this writing">
+        <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span class="admin-btn-text">Favorite</span>
+      </button>
+      <button class="admin-tool-btn" id="btnPostcard" title="Generate aesthetic literary postcard image">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span class="admin-btn-text">Postcard</span>
+      </button>
+      <button class="admin-tool-btn" id="btnShare" title="Copy code snippet to share or add to GitHub">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <span class="admin-btn-text">Share Snippet</span>
+      </button>
+      <button class="admin-tool-btn" id="btnEdit" title="Edit this writing">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+      <button class="admin-tool-btn" id="btnDelete" title="Delete this writing">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+      </button>
+    </div>
     <article class="reading" id="readingContent">
       <!-- Populated by JS -->
     </article>
@@ -972,6 +1013,7 @@
                 <option value="">Select author...</option>
                 <option value="neerav">Neerav</option>
                 <option value="avigna">Avigna</option>
+                <option value="both">Both (Neerav & Avigna)</option>
               </select>
             </div>
             <div class="form-group">
@@ -1020,12 +1062,6 @@
                 <span class="form-hint-pill" id="contentHint">Writing Mode: Preserves line breaks</span>
               </div>
             </div>
-            <div class="form-duel-toolbar" id="formDuelToolbar">
-              <span class="form-duel-label">Co-Authored Stanza Duel:</span>
-              <button type="button" class="btn-duel-tag btn-duel-neerav" id="btnInsertNeeravStanza" title="Insert Neerav Verse Tag">+ [Neerav]</button>
-              <button type="button" class="btn-duel-tag btn-duel-avigna" id="btnInsertAvignaStanza" title="Insert Avigna Verse Tag">+ [Avigna]</button>
-              <button type="button" class="btn-duel-tag btn-duel-both" id="btnInsertBothStanza" title="Insert Co-Authored Verse Tag">+ [Both]</button>
-            </div>
             <textarea
               id="formContent"
               class="form-textarea form-textarea-large"
@@ -1035,10 +1071,9 @@
 
 Write freely just as you would in a journal.
 • Press Enter to start a new line
-• Press Enter twice to leave a gap between verses or paragraphs
-• Use [Neerav] and [Avigna] headers for alternating stanza duels"
+• Press Enter twice to leave a gap between verses or paragraphs"
             ></textarea>
-            <span class="form-hint" id="contentSubHint">Tip: Press Enter for new lines, or Enter twice for paragraph/verse gaps. Use Stanza Duel tags for alternating poetries.</span>
+            <span class="form-hint" id="contentSubHint">Tip: Press Enter for new lines, or Enter twice for paragraph/verse gaps.</span>
           </div>
 
           <div class="form-actions">
@@ -1099,48 +1134,6 @@ Write freely just as you would in a journal.
         </div>
       </form>
     </div>
-  </div>
-
-  <!-- Admin Tools (in reading page) -->
-  <div class="admin-tools" id="adminTools" hidden>
-    <button class="admin-tool-btn" id="btnReadLaterReading" title="Save for Later / Bookmark">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-      </svg>
-      <span class="admin-btn-text">Bookmark</span>
-    </button>
-    <button class="admin-tool-btn" id="btnBookmarkReading" title="Favorite this writing">
-      <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-      <span class="admin-btn-text">Favorite</span>
-    </button>
-    <button class="admin-tool-btn" id="btnPostcard" title="Generate aesthetic literary postcard image">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-        <polyline points="21 15 16 10 5 21"></polyline>
-      </svg>
-      <span class="admin-btn-text">Postcard</span>
-    </button>
-    <button class="admin-tool-btn" id="btnShare" title="Copy code snippet to share or add to GitHub">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-      </svg>
-      <span class="admin-btn-text">Share Snippet</span>
-    </button>
-    <button class="admin-tool-btn" id="btnEdit" title="Edit this writing">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    </button>
-    <button class="admin-tool-btn" id="btnDelete" title="Delete this writing">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-      </svg>
-    </button>
   </div>
 
   <!-- Floating Reader Customization Panel (Aa) -->
